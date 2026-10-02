@@ -1,0 +1,2182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="سجل المطعم">
+<meta name="theme-color" content="#1c1b19">
+<title>سجل المطعم الشامل</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#1c1b19; --panel:#242220; --panel-2:#2b2925; --line:#3a362f;
+    --ink:#ede6d6; --ink-dim:#a89f8c; --gold:#c9a227; --gold-dim:#8a7220;
+    --green:#5b8c5a; --red:#b5533c; --blue:#5b7c9c; --radius:4px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Tahoma",Arial,sans-serif;font-size:14.5px;line-height:1.6;}
+  #app{max-width:1150px;margin:0 auto;padding:16px 14px 60px;}
+  header.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--gold);padding-bottom:10px;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  header.top input#restaurantName{background:none;border:none;color:var(--gold);font-size:23px;font-weight:700;padding:0;outline:none;font-family:inherit;}
+  header.top .sub{color:var(--ink-dim);font-size:12px;}
+  .export-btn{background:var(--gold);color:#1c1b19;border:none;border-radius:3px;padding:9px 16px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit;}
+  .export-btn:hover{background:#dbb534;}
+
+  nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px;flex-wrap:wrap;}
+  nav.tabs button{background:none;border:none;color:var(--ink-dim);padding:9px 15px;font-size:14px;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;}
+  nav.tabs button:hover{color:var(--ink);}
+  nav.tabs button.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+  h2.section-title{font-size:14.5px;color:var(--gold);margin:0 0 12px;font-weight:600;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px;}
+  .grid{display:grid;gap:14px;}
+  .cols-2{grid-template-columns:1fr 1fr;}
+  @media (max-width:760px){.cols-2{grid-template-columns:1fr;}}
+
+  input,select{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:3px;padding:7px 9px;font-family:inherit;font-size:13.5px;width:100%;outline:none;}
+  input:focus,select:focus{border-color:var(--gold-dim);}
+  label{font-size:11.5px;color:var(--ink-dim);display:block;margin-bottom:3px;}
+  .field{margin-bottom:9px;}
+  .field-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .field-row .field{flex:1;min-width:110px;}
+
+  button.btn{background:var(--gold);color:#1c1b19;border:none;border-radius:3px;padding:9px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  button.btn:hover{background:#dbb534;}
+  button.btn.secondary{background:none;border:1px solid var(--line);color:var(--ink);font-weight:500;}
+  button.btn.secondary:hover{border-color:var(--gold-dim);color:var(--gold);}
+  button.btn.blue{background:var(--blue);color:#0f1a22;}
+  button.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  table.sheet{width:100%;border-collapse:collapse;}
+  table.sheet th{text-align:right;color:var(--ink-dim);font-weight:500;font-size:11.5px;padding:6px 7px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  table.sheet td{padding:7px;border-bottom:1px dashed var(--line);font-size:13px;}
+  table.sheet tr:last-child td{border-bottom:none;}
+  table.sheet td.num{font-variant-numeric:tabular-nums;}
+  .cat-tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10.5px;background:var(--panel-2);border:1px solid var(--line);color:var(--ink-dim);}
+  .remove{background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;}
+  .empty{color:var(--ink-dim);text-align:center;padding:26px 10px;font-size:13px;}
+  .muted{color:var(--ink-dim);font-size:12px;}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--gold);color:#1c1b19;padding:9px 18px;border-radius:4px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s;z-index:99;}
+  .toast.show{opacity:1;}
+  .totals-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;}
+  .tstat{background:var(--panel-2);border:1px solid var(--line);border-radius:3px;padding:9px 14px;}
+  .tstat .l{font-size:11px;color:var(--ink-dim);}
+  .tstat .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .attend-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line);}
+  .attend-row:last-child{border-bottom:none;}
+  .attend-btns{display:flex;gap:6px;}
+  .attend-btns button{padding:5px 10px;border-radius:3px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-dim);cursor:pointer;font-size:12px;font-family:inherit;}
+  .attend-btns button.present.active{background:var(--green);color:#0f1a10;border-color:var(--green);}
+  .attend-btns button.absent.active{background:var(--red);color:#1a0f0f;border-color:var(--red);}
+  #invoiceCameraInput,#invoiceGalleryInput{display:none;}
+  .status-btn{padding:4px 10px;border-radius:10px;border:1px solid var(--line);cursor:pointer;font-size:11px;font-family:inherit;}
+  .status-btn.paid{background:var(--green);color:#0f1a10;border-color:var(--green);}
+  .status-btn.unpaid{background:var(--panel-2);color:var(--red);border-color:var(--red);}
+  #thursdayBanner{display:none;background:linear-gradient(90deg,var(--panel-2),var(--panel));border:1px solid var(--gold-dim);border-right:4px solid var(--gold);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;}
+  #thursdayBanner.show{display:block;}
+  #thursdayBanner .title{color:var(--gold);font-weight:700;font-size:15px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  #thursdayBanner .close-b{background:none;border:none;color:var(--ink-dim);cursor:pointer;font-size:16px;}
+  #thursdayBanner .row{display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0;border-bottom:1px dashed var(--line);}
+  #thursdayBanner .row:last-child{border-bottom:none;}
+  #thursdayBanner .row .v{font-weight:700;font-variant-numeric:tabular-nums;}
+  .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:6px;}
+  .status-dot.on{background:var(--green);}
+  .status-dot.off{background:var(--red);}
+  #backupFileInput{display:none;}
+  .hint{font-size:11.5px;color:var(--ink-dim);line-height:1.7;background:var(--panel-2);border:1px solid var(--line);border-radius:3px;padding:8px 10px;margin-top:8px;}
+  .autocomplete-list{position:absolute;z-index:60;top:100%;right:0;left:0;background:var(--panel-2);border:1px solid var(--gold-dim);border-radius:3px;max-height:190px;overflow-y:auto;margin-top:3px;box-shadow:0 6px 16px rgba(0,0,0,.5);}
+  .autocomplete-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--line);color:var(--ink);}
+  .autocomplete-item:last-child{border-bottom:none;}
+  .autocomplete-item:hover,.autocomplete-item.active{background:var(--panel);color:var(--gold);}
+  .spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--gold-dim);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-left:6px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div>
+      <input id="restaurantName" value="مطعمي" oninput="onNameChange(this.value)">
+      <div class="sub">سجل المشتريات والعمال والمبيعات</div>
+    </div>
+    <button class="export-btn" onclick="exportExcel()">تحميل الملف اكسل ⬇</button>
+  </header>
+  <div id="thursdayBanner"></div>
+  <nav class="tabs" id="tabs"></nav>
+  <div id="content"></div>
+</div>
+<div class="toast" id="toast"></div>
+<input type="file" id="invoiceCameraInput" accept="image/*" capture="environment" onchange="handleInvoiceFile(this.files[0])">
+<input type="file" id="invoiceGalleryInput" accept="image/*" onchange="handleInvoiceFile(this.files[0])">
+<input type="file" id="backupFileInput" accept="application/json" onchange="handleImportFile(this.files[0])">
+
+<script>
+/* ---------------- state ---------------- */
+let purchases=[], workers=[], attendance=[], payments=[], sales=[], materials=[], fixedExpenses=[], supplierBalances={}, netAdjustments=[], usdBuys=[], netBaseline=null;
+let settings={restaurantName:"مطعمي"};
+let currentTab="purchases";
+let reading=false;
+let purchaseSupplierFilter = "";
+let reportsRangeStart = null, reportsRangeEnd = null;
+let reportsMonth = todayISO().slice(0,7);
+
+const PUR_CATS=["غاز","دجاج","خضار وفواكه","لحوم","منتجات ألبان","مشروبات","مواد تنظيف","أخرى"];
+const money = n => (Math.round((n||0)*100)/100).toLocaleString("ar-SY",{maximumFractionDigits:2});
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(36).slice(2));
+
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(toast._h);
+  toast._h=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+/* ---------------- storage ---------------- */
+async function loadAll(){
+  purchases = await loadKey("purchases", []);
+  purchases.forEach(p=>{
+    if(!Array.isArray(p.payments)){
+      p.payments = p.status==='paid' ? [{id:uid(), date:p.date, amount:p.total}] : [];
+    }
+  });
+  materials = await loadKey("materials", []);
+  fixedExpenses = await loadKey("fixedExpenses", []);
+  fixedExpenses.forEach(f=>{
+    if(!Array.isArray(f.payments)){
+      f.payments = f.status==='paid' ? [{id:uid(), date:f.date, amount:f.amount}] : [];
+    }
+  });
+  supplierBalances = await loadKey("supplierBalances", {});
+  netAdjustments = await loadKey("netAdjustments", []);
+  usdBuys = await loadKey("usdBuys", []);
+  netBaseline = await loadKey("netBaseline", null);
+  workers = await loadKey("workers", []);
+  workers.forEach(w=>{
+    if(!Array.isArray(w.advances)){
+      w.advances = (Number(w.borrowed)>0) ? [{id:uid(), date:todayISO(), amount:Number(w.borrowed)}] : [];
+    }
+  });
+  attendance = await loadKey("attendance", []);
+  payments = await loadKey("payments", []);
+  sales = await loadKey("sales", []);
+  settings = await loadKey("settings", {restaurantName:"مطعمي"});
+  document.getElementById("restaurantName").value = settings.restaurantName || "مطعمي";
+}
+function purchasePaidAmount(p){
+  if(Array.isArray(p.payments)) return p.payments.reduce((s,pm)=>s+(Number(pm.amount)||0),0);
+  return p.status==='paid' ? p.total : 0;
+}
+function purchaseRemaining(p){ return Math.max(0, (p.total||0) - purchasePaidAmount(p)); }
+function fixedPaidAmount(f){
+  if(Array.isArray(f.payments)) return f.payments.reduce((s,pm)=>s+(Number(pm.amount)||0),0);
+  return f.status==='paid' ? (Number(f.amount)||0) : 0;
+}
+function fixedRemaining(f){ return Math.max(0, (Number(f.amount)||0) - fixedPaidAmount(f)); }
+function workerBorrowedAmount(w){
+  if(Array.isArray(w.advances)) return w.advances.reduce((s,a)=>s+(Number(a.amount)||0),0);
+  return Number(w.borrowed)||0;
+}
+function workerNet(w){ return (Number(w.weeklySalary)||0) - workerBorrowedAmount(w); }
+async function loadKey(key, fallback){
+  try{ const raw = localStorage.getItem("resLedger_"+key); return raw ? JSON.parse(raw) : fallback; }
+  catch(e){ return fallback; }
+}
+async function save(key, val){
+  try{ localStorage.setItem("resLedger_"+key, JSON.stringify(val)); }catch(e){ toast("تعذر الحفظ، مساحة التخزين ممتلئة؟"); }
+  if(key!=="settings"){ autoSyncIfNeeded(); }
+}
+let nameDebounce;
+function onNameChange(v){ settings.restaurantName=v; clearTimeout(nameDebounce); nameDebounce=setTimeout(()=>save("settings",settings),500); }
+
+/* ---------------- Thursday weekly report ---------------- */
+let thursdayDismissed = false;
+function getWeekRange(){
+  const now = new Date();
+  const day = now.getDay(); // 0=Sunday
+  const sunday = new Date(now); sunday.setDate(now.getDate()-day);
+  return {start: sunday.toISOString().slice(0,10), end: todayISO()};
+}
+function renderThursdayBanner(){
+  const el = document.getElementById("thursdayBanner");
+  const isThursday = new Date().getDay()===4; // 4 = Thursday
+  if(!isThursday || thursdayDismissed){ el.className=""; el.innerHTML=""; return; }
+
+  const {start,end} = getWeekRange();
+  const weekPurchases = purchases.filter(p=>p.date>=start && p.date<=end);
+  const weekTotal = {SYP:0, USD:0};
+  weekPurchases.forEach(p=>{ weekTotal[p.currency==="USD"?"USD":"SYP"] += p.total; });
+  const unpaidTotal = {SYP:0, USD:0};
+  purchases.forEach(p=>{
+    const rem = purchaseRemaining(p);
+    if(rem>0.001) unpaidTotal[p.currency==="USD"?"USD":"SYP"] += rem;
+  });
+  Object.values(supplierBalances).forEach(b=>{ unpaidTotal.SYP += Number(b.SYP)||0; unpaidTotal.USD += Number(b.USD)||0; });
+
+  const thisMonth = todayISO().slice(0,7);
+  let workersRemaining = 0;
+  workers.forEach(w=>{
+    workersRemaining += Math.max(0, workerNet(w));
+  });
+  const unpaidFixed = fixedExpenses.filter(f=>(f.currency||'SYP')==='SYP').reduce((s,f)=>s+fixedRemaining(f),0);
+
+  el.className = "show";
+  el.innerHTML = `
+    <div class="title">
+      <span>📋 جرد يوم الخميس (${start} ← ${end})</span>
+      <button class="close-b" onclick="dismissThursdayBanner()">✕</button>
+    </div>
+    <div class="row"><span>عدد فواتير المشتريات هالأسبوع</span><span class="v">${weekPurchases.length}</span></div>
+    <div class="row"><span>إجمالي مشتريات هالأسبوع</span><span class="v">${money(weekTotal.SYP)} ل.س${weekTotal.USD?' + '+money(weekTotal.USD)+' $':''}</span></div>
+    <div class="row"><span>المستحق دفعه للمواد (فواتير غير مدفوعة)</span><span class="v" style="color:var(--red);">${money(unpaidTotal.SYP)} ل.س${unpaidTotal.USD?' + '+money(unpaidTotal.USD)+' $':''}</span></div>
+    <div class="row"><span>المستحق دفعه للمصاريف الثابتة (إيجار/ماء/غاز...)</span><span class="v" style="color:var(--red);">${money(unpaidFixed)} ل.س</span></div>
+    <div class="row"><span>المستحق دفعه للعمال (الرواتب الأسبوعية ناقص المستلف)</span><span class="v" style="color:var(--red);">${money(workersRemaining)} ل.س</span></div>
+    <div class="row" style="border-top:1px solid var(--gold-dim);margin-top:6px;padding-top:8px;"><span>إجمالي لازم يترتب دفعه (ل.س)</span><span class="v" style="color:var(--gold);font-size:16px;">${money(unpaidTotal.SYP+workersRemaining+unpaidFixed)} ل.س</span></div>
+    ${unpaidTotal.USD?`<div class="row"><span>إجمالي لازم يترتب دفعه ($)</span><span class="v" style="color:var(--gold);font-size:16px;">${money(unpaidTotal.USD)} $</span></div>`:''}
+  `;
+}
+function dismissThursdayBanner(){
+  thursdayDismissed = true;
+  renderThursdayBanner();
+}
+
+/* ---------------- tabs ---------------- */
+const TABS=[{id:"purchases",label:"المشتريات"},{id:"fixed",label:"المصاريف الثابتة"},{id:"workers",label:"العمال"},{id:"sales",label:"المبيعات"},{id:"reports",label:"التقارير"},{id:"settings",label:"الإعدادات"}];
+function renderTabs(){
+  document.getElementById("tabs").innerHTML = TABS.map(t=>`<button class="${t.id===currentTab?'active':''}" onclick="switchTab('${t.id}')">${t.label}</button>`).join("");
+}
+function switchTab(id){ currentTab=id; renderTabs(); render(); }
+
+/* ================= المشتريات ================= */
+const CUR_LABEL = {SYP:"ل.س", USD:"$"};
+function renderPurchases(){
+  const editingMaterial = materials.find(m=>m.id===editingMaterialId);
+  const totals = {SYP:0, USD:0};
+  const unpaidTotals = {SYP:0, USD:0};
+  purchases.forEach(p=>{
+    const cur = p.currency==="USD" ? "USD" : "SYP";
+    totals[cur] += p.total;
+    const rem = purchaseRemaining(p);
+    if(rem>0.001) unpaidTotals[cur] += rem;
+  });
+  const byCat = {};
+  purchases.forEach(p=>{
+    const cur = p.currency==="USD" ? "USD" : "SYP";
+    byCat[p.category] = byCat[p.category] || {SYP:0, USD:0};
+    byCat[p.category][cur] += p.total;
+  });
+  const sorted = purchases.slice()
+    .filter(p=>!purchaseSupplierFilter || p.supplier===purchaseSupplierFilter)
+    .sort((a,b)=>b.date.localeCompare(a.date));
+  return `
+    ${renderPendingInvoiceReview()}
+    <div class="panel">
+      <h2 class="section-title">قراءة فاتورة بالصورة</h2>
+      <p class="muted" style="margin-top:0;">ارفع صورة فاتورة الشراء (غاز، دجاج، منتجات...) وبيقرأها ويحطها بالجدول تلقائياً، وبيحدد العملة (ليرة أو دولار) من الصورة.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn blue" onclick="document.getElementById('invoiceCameraInput').click()" ${reading?'disabled':''}>
+          ${reading?'جاري القراءة...':'📷 التقاط صورة'} ${reading?'<span class="spinner"></span>':''}
+        </button>
+        <button class="btn secondary" onclick="document.getElementById('invoiceGalleryInput').click()" ${reading?'disabled':''}>
+          🖼️ اختيار من المعرض
+        </button>
+      </div>
+      ${!settings.apiKey?`<div class="hint" style="margin-top:8px;">⚠ لازم تحط مفتاح Gemini API المجاني أولاً من تبويب "الإعدادات" حتى تشتغل هاي الميزة.</div>`:''}
+    </div>
+    <div class="panel">
+      <h2 class="section-title">قائمة المواد المحفوظة</h2>
+      <p class="muted" style="margin-top:0;">ضيف اسم المادة وسعرها مرة وحدة، وبعدين وقت تسجل مشترى بس اكتب أول حرفين من الاسم وبيعبيلك السعر والتصنيف تلقائياً.</p>
+      <div class="field-row">
+        <div class="field"><label>اسم المادة</label><input id="mName" value="${editingMaterial?editingMaterial.name:''}" placeholder="مثال: أسطوانة غاز"></div>
+        <div class="field"><label>السعر</label><input id="mPrice" type="number" min="0" value="${editingMaterial?editingMaterial.price:''}"></div>
+        <div class="field"><label>العملة</label>
+          <select id="mCurrency">
+            <option value="SYP" ${!editingMaterial||editingMaterial.currency==='SYP'?'selected':''}>ليرة سورية</option>
+            <option value="USD" ${editingMaterial&&editingMaterial.currency==='USD'?'selected':''}>دولار</option>
+          </select>
+        </div>
+        <div class="field"><label>التصنيف</label>
+          <select id="mCategory">${PUR_CATS.map(c=>`<option ${editingMaterial&&editingMaterial.category===c?'selected':''}>${c}</option>`).join("")}</select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="saveMaterial()">${editingMaterial?'حفظ التعديل':'إضافة للقائمة'}</button>
+        ${editingMaterial?`<button class="btn secondary" onclick="cancelEditMaterial()">إلغاء</button>`:''}
+      </div>
+      ${materials.length===0?`<div class="empty">ما في مواد محفوظة بعد</div>`:`
+        <table class="sheet" style="margin-top:12px;">
+          <tr><th>الاسم</th><th>السعر</th><th></th></tr>
+          ${materials.map(m=>`
+            <tr>
+              <td>${m.name} <span class="cat-tag">${m.category}</span></td>
+              <td class="num">${money(m.price)} ${CUR_LABEL[m.currency==='USD'?'USD':'SYP']}</td>
+              <td style="white-space:nowrap;">
+                <button class="btn secondary" style="padding:4px 10px;font-size:12px;" onclick="editMaterial('${m.id}')">تعديل</button>
+                <button class="remove" onclick="deleteMaterial('${m.id}')">✕</button>
+              </td>
+            </tr>
+          `).join("")}
+        </table>
+      `}
+    </div>
+    <div class="panel">
+      <h2 class="section-title">إضافة يدوية</h2>
+      <div class="field-row">
+        <div class="field"><label>الوصف</label>
+          <input id="pDesc" list="materialsDatalist" oninput="onPurchaseDescInput(this.value)" placeholder="مثال: أسطوانة غاز">
+          <datalist id="materialsDatalist">${materials.map(m=>`<option value="${m.name}">`).join("")}</datalist>
+        </div>
+        <div class="field" style="position:relative;">
+          <label>المؤسسة / المورد</label>
+          <input id="pSupplier" placeholder="مثال: سوبر ماركت الملك" autocomplete="off" oninput="filterSupplierSuggestions(this.value)" onfocus="filterSupplierSuggestions(this.value)" onblur="hideSupplierSuggestions()">
+          <div id="supplierSuggestions" class="autocomplete-list" style="display:none;"></div>
+        </div>
+        <div class="field"><label>التصنيف</label><select id="pCategory">${PUR_CATS.map(c=>`<option>${c}</option>`).join("")}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>الكمية</label><input id="pQty" type="number" min="0" value="1"></div>
+        <div class="field"><label>سعر الوحدة</label><input id="pPrice" type="number" min="0"></div>
+        <div class="field"><label>العملة</label>
+          <select id="pCurrency">
+            <option value="SYP">ليرة سورية (ل.س)</option>
+            <option value="USD">دولار ($)</option>
+          </select>
+        </div>
+        <div class="field"><label>التاريخ</label><input id="pDate" type="date" value="${todayISO()}"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-dim);margin-bottom:10px;">
+        <input type="checkbox" id="pPaidNow" style="width:auto;"> دفعتها فوراً (سجلها مدفوعة بنفس التاريخ)
+      </label>
+      <button class="btn" onclick="addPurchase()">إضافة</button>
+    </div>
+    <div class="totals-row">
+      <div class="tstat"><div class="l">إجمالي المشتريات (ل.س)</div><div class="v" style="color:var(--red);">${money(totals.SYP)} ل.س</div></div>
+      <div class="tstat"><div class="l">إجمالي المشتريات ($)</div><div class="v" style="color:var(--red);">${money(totals.USD)} $</div></div>
+      <div class="tstat"><div class="l">غير مدفوع (ل.س)</div><div class="v" style="color:var(--gold);">${money(unpaidTotals.SYP)} ل.س</div></div>
+      <div class="tstat"><div class="l">غير مدفوع ($)</div><div class="v" style="color:var(--gold);">${money(unpaidTotals.USD)} $</div></div>
+      ${Object.entries(byCat).map(([c,v])=>`<div class="tstat"><div class="l">${c}</div><div class="v" style="font-size:13px;">${v.SYP?money(v.SYP)+' ل.س':''}${v.SYP&&v.USD?' + ':''}${v.USD?money(v.USD)+' $':''}</div></div>`).join("")}
+    </div>
+    <div class="panel">
+      <h2 class="section-title">💵 سجل شراء الدولار</h2>
+      <p class="muted" style="margin-top:0;">سجل هون كل مرة تشتري دولار (تحويل من ليرة)، حتى يكون عندك مرجع تاريخي بالسعر وقديش اشتريت، وتحاسب المؤسسات عليه براحتك.</p>
+      <div class="field-row">
+        <div class="field"><label>التاريخ</label><input id="ubDate" type="date" value="${todayISO()}"></div>
+        <div class="field"><label>قديش دولار اشتريت ($)</label><input id="ubUsd" type="number" min="0" step="0.01"></div>
+        <div class="field"><label>قديش دفعت ليرة (ل.س)</label><input id="ubSyp" type="number" min="0"></div>
+      </div>
+      <button class="btn" onclick="addUsdBuy()">إضافة</button>
+      ${(()=>{
+        if(usdBuys.length===0) return `<div class="empty" style="margin-top:10px;">ما في عمليات شراء دولار مسجلة بعد</div>`;
+        const totalUsd = usdBuys.reduce((s,u)=>s+Number(u.usd),0);
+        const totalSyp = usdBuys.reduce((s,u)=>s+Number(u.syp),0);
+        const avgRate = totalUsd>0 ? totalSyp/totalUsd : 0;
+        const sorted = usdBuys.slice().sort((a,b)=>b.date.localeCompare(a.date));
+        return `
+          <div class="totals-row" style="margin-top:10px;">
+            <div class="tstat"><div class="l">إجمالي الدولار المشترى</div><div class="v" style="color:var(--gold);">${money(totalUsd)} $</div></div>
+            <div class="tstat"><div class="l">إجمالي الليرة المدفوعة</div><div class="v" style="color:var(--red);">${money(totalSyp)} ل.س</div></div>
+            <div class="tstat"><div class="l">متوسط سعر الصرف</div><div class="v" style="color:var(--ink);">${money(avgRate)} ل.س/$</div></div>
+          </div>
+          ${sorted.map(u=>`<div class="flex-between" style="padding:4px 0;font-size:12.5px;border-bottom:1px dashed var(--line);">
+            <span class="muted">${u.date}: اشتريت ${money(u.usd)} $ بـ ${money(u.syp)} ل.س (سعر ${money(u.syp/u.usd)})</span>
+            <span style="cursor:pointer;color:var(--red);" onclick="deleteUsdBuy('${u.id}')">✕</span>
+          </div>`).join("")}
+        `;
+      })()}
+    </div>
+    <div class="panel">
+      <h2 class="section-title">المؤسسات/الموردين</h2>
+      ${(()=>{
+        const bySup = {};
+        purchases.forEach(p=>{
+          const key = p.supplier || "بدون اسم مؤسسة";
+          bySup[key] = bySup[key] || {paid:{SYP:0,USD:0}, unpaid:{SYP:0,USD:0}};
+          const cur = p.currency==="USD"?"USD":"SYP";
+          bySup[key].paid[cur] += purchasePaidAmount(p);
+          bySup[key].unpaid[cur] += purchaseRemaining(p);
+        });
+        Object.keys(supplierBalances).forEach(key=>{
+          if(!bySup[key]) bySup[key] = {paid:{SYP:0,USD:0}, unpaid:{SYP:0,USD:0}};
+        });
+        const names = Object.keys(bySup);
+        if(names.length===0) return `<div class="empty">لسا ما في فواتير مرتبطة بمؤسسات</div>`;
+        return names.map(name=>{
+          const v = bySup[name];
+          const opening = supplierBalances[name] || {SYP:0, USD:0};
+          const totalDue = {SYP: v.unpaid.SYP + (Number(opening.SYP)||0), USD: v.unpaid.USD + (Number(opening.USD)||0)};
+          const active = purchaseSupplierFilter===name;
+          return `
+          <div class="flex-between" style="padding:8px 0;border-bottom:1px dashed var(--line);cursor:pointer;" onclick="purchaseSupplierFilter='${active?'':name}'; render();">
+            <div>
+              <b style="${active?'color:var(--gold);':''}">${name}</b>
+              <div class="muted" style="font-size:11.5px;">مدفوع: ${v.paid.SYP?money(v.paid.SYP)+' ل.س ':''}${v.paid.USD?money(v.paid.USD)+' $':''}${(!v.paid.SYP&&!v.paid.USD)?'0':''}${(opening.SYP||opening.USD)?` — رصيد سابق: ${opening.SYP?money(opening.SYP)+' ل.س':''}${opening.USD?' '+money(opening.USD)+' $':''}`:''}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="text-align:left;">
+                <div class="muted" style="font-size:11px;">المستحق عليّ (شامل الرصيد السابق)</div>
+                <div style="color:var(--red);font-weight:700;">${totalDue.SYP?money(totalDue.SYP)+' ل.س ':''}${totalDue.USD?money(totalDue.USD)+' $':''}${(!totalDue.SYP&&!totalDue.USD)?'0':''}</div>
+              </div>
+              <button class="btn blue" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation(); openSupplierPay('${name.replace(/'/g,"\\'")}')" title="دفع">💵 دفع</button>
+              <button class="btn secondary" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation(); setSupplierOpeningBalance('${name.replace(/'/g,"\\'")}')" title="رصيد سابق">💰</button>
+              <button class="btn secondary" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation(); renameSupplier('${name.replace(/'/g,"\\'")}')">✏️</button>
+              <button class="remove" onclick="event.stopPropagation(); deleteSupplierEntirely('${name.replace(/'/g,"\\'")}')" title="حذف المؤسسة">✕</button>
+            </div>
+          </div>
+          ${payingSupplierName===name?`
+            <div class="panel" style="background:var(--panel-2);margin:8px 0;padding:10px;" onclick="event.stopPropagation()">
+              <p class="muted" style="margin-top:0;">المبلغ بينخصم أولاً من الرصيد السابق، وبعدين من أقدم فاتورة غير مدفوعة لهاي المؤسسة، وهكذا.</p>
+              <div class="field-row">
+                <div class="field"><label>العملة</label>
+                  <select id="supPayCurrency">
+                    <option value="SYP" ${!totalDue.USD||totalDue.SYP?'selected':''}>ليرة سورية</option>
+                    <option value="USD" ${totalDue.USD&&!totalDue.SYP?'selected':''}>دولار</option>
+                  </select>
+                </div>
+                <div class="field"><label>المبلغ</label><input id="supPayAmount" type="number" min="0"></div>
+                <div class="field"><label>التاريخ</label><input id="supPayDate" type="date" value="${todayISO()}"></div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn" onclick="paySupplierBulk('${name.replace(/'/g,"\\'")}')">حفظ الدفعة</button>
+                <button class="btn secondary" onclick="payingSupplierName=null; render();">إلغاء</button>
+              </div>
+            </div>
+          `:''}`;
+        }).join("");
+      })()}
+      ${purchaseSupplierFilter?`<p class="muted" style="margin-top:8px;">عم تعرض فواتير "${purchaseSupplierFilter}" بس بالجدول تحت. <a style="color:var(--gold);cursor:pointer;" onclick="purchaseSupplierFilter=''; render();">إلغاء الفلترة</a></p>`:''}
+    </div>
+    <div class="panel">
+      <div class="flex-between" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <h2 class="section-title" style="margin:0;">سجل المشتريات (${purchases.length})</h2>
+        <select id="supplierFilter" style="width:auto;max-width:200px;" onchange="purchaseSupplierFilter=this.value; render();">
+          <option value="">كل المؤسسات</option>
+          ${[...new Set(purchases.map(p=>p.supplier).filter(Boolean))].map(s=>`<option value="${s}" ${purchaseSupplierFilter===s?'selected':''}>${s}</option>`).join("")}
+        </select>
+      </div>
+      ${(()=>{
+        if(sorted.length===0) return `<div class="empty">ما في مشتريات مسجلة بعد</div>`;
+        const groups = {};
+        sorted.forEach(p=>{
+          const cur = p.currency==="USD"?"USD":"SYP";
+          const key = cur+"||"+(p.supplier||"بدون مؤسسة")+"||"+p.date;
+          if(!groups[key]) groups[key] = {currency:cur, supplier:p.supplier||"بدون مؤسسة", date:p.date, items:[]};
+          groups[key].items.push(p);
+        });
+        currentPurchaseGroups = Object.values(groups).sort((a,b)=> b.date.localeCompare(a.date));
+        const sypGroups = currentPurchaseGroups.filter(g=>g.currency==='SYP');
+        const usdGroups = currentPurchaseGroups.filter(g=>g.currency==='USD');
+
+        function renderGroup(g){
+          const idx = currentPurchaseGroups.indexOf(g);
+          const sym = CUR_LABEL[g.currency];
+          const total = g.items.reduce((s,p)=>s+p.total,0);
+          const paidAmt = g.items.reduce((s,p)=>s+purchasePaidAmount(p),0);
+          const remaining = g.items.reduce((s,p)=>s+purchaseRemaining(p),0);
+          let badge;
+          if(remaining<=0.001) badge = `<span class="status-btn paid">مدفوعة بالكامل</span>`;
+          else if(paidAmt>0.001) badge = `<span class="status-btn" style="background:var(--gold);color:#1c1b19;border-color:var(--gold);">جزئي — باقي ${money(remaining)} ${sym}</span>`;
+          else badge = `<span class="status-btn unpaid">غير مدفوعة</span>`;
+          return `
+          <div class="invoice-card">
+            <div class="flex-between" style="flex-wrap:wrap;gap:6px;">
+              <div><b>${g.supplier}</b><div class="muted" style="font-size:11.5px;">${g.date} — ${g.items.length} بند</div></div>
+              <div style="text-align:left;"><div style="color:var(--red);font-weight:700;font-size:16px;">${money(total)} ${sym}</div></div>
+            </div>
+            <div style="margin-top:8px;border-top:1px dashed var(--line);padding-top:6px;">
+              ${g.items.map(p=>`
+                <div class="flex-between" style="padding:3px 0;font-size:12.5px;">
+                  <span>${p.desc} <span class="cat-tag" style="font-size:9.5px;">${p.category}</span> — ${p.qty} × ${money(p.unitPrice)}</span>
+                  <span style="display:flex;align-items:center;gap:6px;">
+                    <span class="muted">${money(p.total)} ${sym}</span>
+                    <span style="cursor:pointer;color:var(--gold);" onclick="openEditPurchase('${p.id}')">✏️</span>
+                    <span class="remove" style="cursor:pointer;" onclick="deletePurchase('${p.id}')">✕</span>
+                  </span>
+                </div>
+                ${editingPurchaseId===p.id?`
+                  <div class="panel" style="background:var(--panel-2);margin:6px 0;padding:10px;">
+                    <div class="field-row">
+                      <div class="field"><label>الوصف</label><input id="epDesc" value="${p.desc}"></div>
+                      <div class="field"><label>التصنيف</label><select id="epCategory">${PUR_CATS.map(c=>`<option ${p.category===c?'selected':''}>${c}</option>`).join("")}</select></div>
+                    </div>
+                    <div class="field-row">
+                      <div class="field"><label>المؤسسة</label><input id="epSupplier" value="${p.supplier||''}"></div>
+                      <div class="field"><label>التاريخ</label><input id="epDate" type="date" value="${p.date}"></div>
+                    </div>
+                    <div class="field-row">
+                      <div class="field"><label>الكمية</label><input id="epQty" type="number" min="0" value="${p.qty}"></div>
+                      <div class="field"><label>سعر الوحدة</label><input id="epPrice" type="number" min="0" value="${p.unitPrice}"></div>
+                      <div class="field"><label>العملة</label>
+                        <select id="epCurrency">
+                          <option value="SYP" ${p.currency!=='USD'?'selected':''}>ليرة سورية</option>
+                          <option value="USD" ${p.currency==='USD'?'selected':''}>دولار</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                      <button class="btn" onclick="saveEditPurchase('${p.id}')">حفظ التعديل</button>
+                      <button class="btn secondary" onclick="cancelEditPurchase()">إلغاء</button>
+                    </div>
+                  </div>
+                `:''}
+              `).join("")}
+            </div>
+            <div class="flex-between" style="margin-top:8px;flex-wrap:wrap;gap:6px;">
+              <div>${badge}</div>
+              ${remaining>0.001?`<button class="btn secondary" style="padding:4px 12px;font-size:12px;" onclick="openGroupPayment(${idx})">+ دفع الفاتورة</button>`:''}
+            </div>
+            ${g.items.some(p=>p.payments&&p.payments.length)?`
+              <div class="muted" style="margin-top:6px;font-size:11px;">
+                ${g.items.flatMap(p=>(p.payments||[]).map(pm=>`<div class="flex-between" style="padding:1px 0;">
+                  <span>دفعة ${pm.date}: ${money(pm.amount)} ${sym}</span>
+                  <span style="cursor:pointer;color:var(--red);" onclick="deletePurchasePayment('${p.id}','${pm.id}')">✕</span>
+                </div>`)).join("")}
+              </div>
+            `:''}
+            ${payingGroupIndex===idx?`
+              <div class="panel" style="background:var(--panel-2);margin-top:8px;padding:10px;">
+                <div class="field-row">
+                  <div class="field"><label>المبلغ (${sym})</label><input id="gpAmount" type="number" min="0" value="${remaining}"></div>
+                  <div class="field"><label>التاريخ</label><input id="gpDate" type="date" value="${todayISO()}"></div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn" onclick="addGroupPayment(${idx})">حفظ الدفعة</button>
+                  <button class="btn secondary" onclick="cancelGroupPayment()">إلغاء</button>
+                </div>
+              </div>
+            `:''}
+          </div>`;
+        }
+
+        return `
+          ${sypGroups.length?`<h2 class="section-title" style="margin-top:6px;">🇸🇾 فواتير بالليرة السورية (${sypGroups.length})</h2>${sypGroups.map(renderGroup).join("")}`:''}
+          ${usdGroups.length?`<h2 class="section-title" style="margin-top:18px;">💵 فواتير بالدولار (${usdGroups.length})</h2>${usdGroups.map(renderGroup).join("")}`:''}
+        `;
+      })()}
+    </div>
+    <div class="panel">
+      <h2 class="section-title">✅ سجل الفواتير المدفوعة للمؤسسات</h2>
+      ${(()=>{
+        const groups = {};
+        purchases.forEach(p=>{
+          const cur = p.currency==="USD"?"USD":"SYP";
+          const key = cur+"||"+(p.supplier||"بدون مؤسسة")+"||"+p.date;
+          if(!groups[key]) groups[key] = {currency:cur, supplier:p.supplier||"بدون مؤسسة", date:p.date, items:[]};
+          groups[key].items.push(p);
+        });
+        const paidList = Object.values(groups)
+          .filter(g=>g.items.reduce((s,p)=>s+purchaseRemaining(p),0)<=0.001 && g.items.reduce((s,p)=>s+purchasePaidAmount(p),0)>0.001)
+          .map(g=>{
+            const total = g.items.reduce((s,p)=>s+p.total,0);
+            const allPayDates = g.items.flatMap(p=>(p.payments||[]).map(pm=>pm.date)).sort();
+            const lastPayDate = allPayDates[allPayDates.length-1] || g.date;
+            const durationDays = Math.round((new Date(lastPayDate)-new Date(g.date))/86400000);
+            const dayName = new Date(g.date).toLocaleDateString("ar-SY",{weekday:"long"});
+            return {...g, total, lastPayDate, durationDays, dayName};
+          })
+          .sort((a,b)=>b.lastPayDate.localeCompare(a.lastPayDate));
+        if(paidList.length===0) return `<div class="empty">ما في فواتير مسددة بالكامل بعد</div>`;
+        return `
+          <table class="sheet">
+            <tr><th>المؤسسة</th><th>تاريخ الفاتورة</th><th>اليوم</th><th>تاريخ آخر تسديد</th><th>المدة</th><th>القيمة</th></tr>
+            ${paidList.map(g=>`
+              <tr>
+                <td>${g.supplier}</td>
+                <td class="muted">${g.date}</td>
+                <td class="muted">${g.dayName}</td>
+                <td class="muted">${g.lastPayDate}</td>
+                <td class="num">${g.durationDays===0?'نفس اليوم':g.durationDays+' يوم'}</td>
+                <td class="num" style="color:var(--green);">${money(g.total)} ${CUR_LABEL[g.currency]}</td>
+              </tr>
+            `).join("")}
+          </table>
+        `;
+      })()}
+    </div>
+  `;
+}
+let currentPurchaseGroups = [];
+let payingGroupIndex = null;
+function openGroupPayment(idx){ payingGroupIndex=idx; render(); }
+function cancelGroupPayment(){ payingGroupIndex=null; render(); }
+async function addGroupPayment(idx){
+  const group = currentPurchaseGroups[idx];
+  if(!group) return;
+  let amount = Number(document.getElementById("gpAmount").value);
+  const date = document.getElementById("gpDate").value || todayISO();
+  if(!amount || amount<=0){ toast("عبي مبلغ صحيح"); return; }
+  for(const p of group.items){
+    if(amount<=0.001) break;
+    const rem = purchaseRemaining(p);
+    if(rem<=0.001) continue;
+    const portion = Math.min(rem, amount);
+    if(!Array.isArray(p.payments)) p.payments = [];
+    p.payments.push({id:uid(), date, amount:portion});
+    amount -= portion;
+  }
+  await save("purchases",purchases);
+  payingGroupIndex = null;
+  toast("تم تسجيل الدفعة على الفاتورة");
+  render();
+}
+let payingPurchaseId = null;
+function openPurchasePayment(id){ payingPurchaseId=id; render(); }
+function cancelPurchasePayment(){ payingPurchaseId=null; render(); }
+async function addPurchasePayment(purchaseId){
+  const amount = Number(document.getElementById("payAmount").value);
+  const date = document.getElementById("payDate").value || todayISO();
+  if(!amount || amount<=0){ toast("عبي مبلغ صحيح"); return; }
+  const p = purchases.find(x=>x.id===purchaseId);
+  if(!p) return;
+  if(!Array.isArray(p.payments)) p.payments = [];
+  p.payments.push({id:uid(), date, amount});
+  await save("purchases",purchases);
+  payingPurchaseId = null;
+  toast("تم تسجيل الدفعة");
+  render();
+}
+async function deletePurchasePayment(purchaseId, paymentId){
+  const p = purchases.find(x=>x.id===purchaseId);
+  if(!p || !Array.isArray(p.payments)) return;
+  p.payments = p.payments.filter(pm=>pm.id!==paymentId);
+  await save("purchases",purchases);
+  render();
+}
+async function addPurchase(){
+  const desc=document.getElementById("pDesc").value.trim();
+  const supplier=document.getElementById("pSupplier").value.trim();
+  const category=document.getElementById("pCategory").value;
+  const qty=Number(document.getElementById("pQty").value)||1;
+  const unitPrice=Number(document.getElementById("pPrice").value)||0;
+  const currency=document.getElementById("pCurrency").value==="USD"?"USD":"SYP";
+  const date=document.getElementById("pDate").value||todayISO();
+  if(!desc||unitPrice<=0){ toast("عبي الوصف والسعر"); return; }
+  const paidNow = document.getElementById("pPaidNow").checked;
+  const total = qty*unitPrice;
+  purchases.push({id:uid(),date,supplier,category,desc,qty,unitPrice,currency,total,payments: paidNow ? [{id:uid(), date, amount:total}] : []});
+  await save("purchases",purchases);
+  const changes = detectPriceChanges([{desc,unitPrice,currency}]);
+  if(changes.length){ await save("materials",materials); alert(formatPriceChanges(changes)); }
+  toast("تمت الإضافة");
+  render();
+}
+/* --- price change detection --- */
+function detectPriceChanges(itemsList){
+  const changes = [];
+  itemsList.forEach(it=>{
+    const m = materials.find(x=>x.name===it.desc);
+    if(m && (m.currency||'SYP')===it.currency && Number(m.price)!==Number(it.unitPrice)){
+      changes.push({name:it.desc, old:m.price, neu:it.unitPrice, currency:it.currency});
+      m.price = it.unitPrice;
+    }
+  });
+  return changes;
+}
+function formatPriceChanges(changes){
+  const lines = changes.map(c=>{
+    const dir = c.neu>c.old ? "⬆ زاد" : "⬇ نقص";
+    return `${c.name}: ${dir} من ${money(c.old)} إلى ${money(c.neu)} ${CUR_LABEL[c.currency]}`;
+  });
+  return "⚠ تغيرت أسعار المواد التالية عن آخر مرة (تم تحديث قائمة المواد تلقائياً):\n\n"+lines.join("\n");
+}
+
+/* --- pending invoice review (before saving) --- */
+function renderPendingInvoiceReview(){
+  if(!pendingInvoice) return "";
+  const inv = pendingInvoice;
+  return `
+    <div class="panel" style="border-color:var(--gold);">
+      <h2 class="section-title">راجع الفاتورة قبل الحفظ</h2>
+      <div class="field-row">
+        <div class="field"><label>المؤسسة/المورد</label><input value="${inv.supplier||''}" oninput="pendingInvoice.supplier=this.value"></div>
+        <div class="field"><label>التاريخ</label><input type="date" value="${inv.date}" onchange="pendingInvoice.date=this.value"></div>
+        <div class="field"><label>حالة الدفع</label>
+          <select onchange="pendingInvoice.status=this.value">
+            <option value="unpaid" ${inv.status==='unpaid'?'selected':''}>غير مدفوعة</option>
+            <option value="paid" ${inv.status==='paid'?'selected':''}>مدفوعة</option>
+          </select>
+        </div>
+      </div>
+      ${inv.items.map((it,idx)=>`
+        <div class="panel" style="background:var(--panel-2);margin-top:8px;padding:10px;">
+          <div class="field-row">
+            <div class="field" style="flex:2;"><label>الوصف</label><input value="${it.desc}" oninput="pendingInvoice.items[${idx}].desc=this.value"></div>
+            <div class="field"><label>التصنيف</label>
+              <select onchange="pendingInvoice.items[${idx}].category=this.value">${PUR_CATS.map(c=>`<option ${it.category===c?'selected':''}>${c}</option>`).join("")}</select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>الكمية</label><input type="number" min="0" value="${it.qty}" oninput="pendingInvoice.items[${idx}].qty=Number(this.value)||0"></div>
+            <div class="field"><label>سعر الوحدة</label><input type="number" min="0" value="${it.unitPrice}" oninput="pendingInvoice.items[${idx}].unitPrice=Number(this.value)||0"></div>
+            <div class="field"><label>العملة</label>
+              <select onchange="pendingInvoice.items[${idx}].currency=this.value">
+                <option value="SYP" ${it.currency==='SYP'?'selected':''}>ليرة سورية</option>
+                <option value="USD" ${it.currency==='USD'?'selected':''}>دولار</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:flex-end;"><button class="remove" onclick="removePendingItem(${idx})">✕</button></div>
+          </div>
+        </div>
+      `).join("")}
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn" style="flex:1;" onclick="confirmPendingInvoice()">✔ حفظ الكل بالمشتريات</button>
+        <button class="btn secondary" onclick="cancelPendingInvoice()">إلغاء</button>
+      </div>
+    </div>
+  `;
+}
+function removePendingItem(idx){
+  if(!pendingInvoice) return;
+  pendingInvoice.items.splice(idx,1);
+  if(pendingInvoice.items.length===0){ pendingInvoice=null; }
+  render();
+}
+async function confirmPendingInvoice(){
+  if(!pendingInvoice) return;
+  const inv = pendingInvoice;
+  const finalItems = inv.items.map(it=>({
+    desc: it.desc, category: it.category, qty: it.qty, unitPrice: it.unitPrice,
+    currency: it.currency, total: it.qty*it.unitPrice
+  }));
+  finalItems.forEach(it=>{
+    const payments = inv.status==='paid' ? [{id:uid(), date:inv.date, amount:it.total}] : [];
+    purchases.push({id:uid(), date:inv.date, supplier:inv.supplier, payments, ...it});
+  });
+  await save("purchases",purchases);
+  const changes = detectPriceChanges(finalItems);
+  if(changes.length){ await save("materials",materials); }
+  pendingInvoice = null;
+  toast(`تمت إضافة ${finalItems.length} بند للمشتريات`);
+  render();
+  if(changes.length){ alert(formatPriceChanges(changes)); }
+}
+function cancelPendingInvoice(){
+  pendingInvoice = null;
+  toast("تم الإلغاء");
+  render();
+}
+async function deletePurchase(id){ purchases=purchases.filter(p=>p.id!==id); await save("purchases",purchases); render(); }
+let editingPurchaseId = null;
+function openEditPurchase(id){ editingPurchaseId=id; payingGroupIndex=null; render(); }
+function cancelEditPurchase(){ editingPurchaseId=null; render(); }
+async function saveEditPurchase(id){
+  const p = purchases.find(x=>x.id===id);
+  if(!p) return;
+  const desc = document.getElementById("epDesc").value.trim();
+  const category = document.getElementById("epCategory").value;
+  const supplier = document.getElementById("epSupplier").value.trim();
+  const date = document.getElementById("epDate").value || p.date;
+  const qty = Number(document.getElementById("epQty").value)||1;
+  const unitPrice = Number(document.getElementById("epPrice").value)||0;
+  const currency = document.getElementById("epCurrency").value==="USD"?"USD":"SYP";
+  if(!desc || unitPrice<=0){ toast("عبي الوصف والسعر"); return; }
+  p.desc=desc; p.category=category; p.supplier=supplier; p.date=date; p.qty=qty; p.unitPrice=unitPrice; p.currency=currency; p.total=qty*unitPrice;
+  await save("purchases",purchases);
+  editingPurchaseId=null;
+  toast("تم حفظ التعديل");
+  render();
+}
+async function renameSupplier(oldName){
+  const newName = prompt("الاسم الجديد للمؤسسة:", oldName);
+  if(!newName || !newName.trim() || newName.trim()===oldName) return;
+  const clean = newName.trim();
+  purchases.forEach(p=>{ if((p.supplier||"بدون اسم مؤسسة")===oldName){ p.supplier = clean; } });
+  await save("purchases",purchases);
+  if(supplierBalances[oldName]){
+    supplierBalances[clean] = supplierBalances[oldName];
+    delete supplierBalances[oldName];
+    await save("supplierBalances",supplierBalances);
+  }
+  if(purchaseSupplierFilter===oldName) purchaseSupplierFilter = clean;
+  toast("تم تعديل اسم المؤسسة بكل الفواتير");
+  render();
+}
+let payingSupplierName = null;
+async function addUsdBuy(){
+  const date = document.getElementById("ubDate").value || todayISO();
+  const usd = Number(document.getElementById("ubUsd").value);
+  const syp = Number(document.getElementById("ubSyp").value);
+  if(!usd || usd<=0 || !syp || syp<=0){ toast("عبي قيمة الدولار والليرة"); return; }
+  usdBuys.push({id:uid(), date, usd, syp});
+  await save("usdBuys",usdBuys);
+  toast("تم تسجيل عملية شراء الدولار");
+  render();
+}
+async function deleteUsdBuy(id){
+  usdBuys = usdBuys.filter(u=>u.id!==id);
+  await save("usdBuys",usdBuys);
+  render();
+}
+function openSupplierPay(name){ payingSupplierName=name; render(); }
+async function paySupplierBulk(name){
+  const currency = document.getElementById("supPayCurrency").value==="USD"?"USD":"SYP";
+  let remaining = Number(document.getElementById("supPayAmount").value);
+  const date = document.getElementById("supPayDate").value || todayISO();
+  if(!remaining || remaining<=0){ toast("عبي مبلغ صحيح"); return; }
+  const totalPaid = remaining;
+
+  const bal = supplierBalances[name] || {SYP:0, USD:0};
+  if((Number(bal[currency])||0) > 0){
+    const pay = Math.min(remaining, Number(bal[currency]));
+    bal[currency] = Number(bal[currency]) - pay;
+    remaining -= pay;
+    supplierBalances[name] = bal;
+  }
+
+  const supPurchases = purchases
+    .filter(p=>(p.supplier||"بدون اسم مؤسسة")===name && (p.currency==="USD"?"USD":"SYP")===currency)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  for(const p of supPurchases){
+    if(remaining<=0.001) break;
+    const rem = purchaseRemaining(p);
+    if(rem>0.001){
+      const pay = Math.min(remaining, rem);
+      if(!Array.isArray(p.payments)) p.payments = [];
+      p.payments.push({id:uid(), date, amount:pay});
+      remaining -= pay;
+    }
+  }
+  await save("purchases",purchases);
+  await save("supplierBalances",supplierBalances);
+  payingSupplierName = null;
+  if(remaining>0.001){
+    toast(`تم توزيع ${money(totalPaid-remaining)} ${CUR_LABEL[currency]}، وضل ${money(remaining)} ${CUR_LABEL[currency]} ما إلها فاتورة تتحسم عليها`);
+  }else{
+    toast("تم توزيع الدفعة على المستحقات بنجاح");
+  }
+  render();
+}
+async function setSupplierOpeningBalance(name){
+  const current = supplierBalances[name] || {SYP:0, USD:0};
+  const syp = prompt(`الرصيد السابق لـ "${name}" بالليرة السورية (اكتب 0 إذا ما في):`, current.SYP||0);
+  if(syp===null) return;
+  const usd = prompt(`الرصيد السابق لـ "${name}" بالدولار (اكتب 0 إذا ما في):`, current.USD||0);
+  if(usd===null) return;
+  supplierBalances[name] = {SYP: Number(syp)||0, USD: Number(usd)||0};
+  await save("supplierBalances",supplierBalances);
+  toast("تم تحديث الرصيد السابق");
+  render();
+}
+async function deleteSupplierEntirely(name){
+  if(!confirm(`متأكد إنك بدك تحذف مؤسسة "${name}" نهائياً؟`)) return;
+  const alsoDeleteInvoices = confirm(`بدك تحذف كل فواتير هاي المؤسسة من السجل كمان؟\n\nOK = احذف الفواتير كمان (نهائي)\nCancel = خلي الفواتير موجودة بالسجل، بس شيل ربطها بالمؤسسة`);
+  if(alsoDeleteInvoices){
+    purchases = purchases.filter(p=>(p.supplier||"بدون اسم مؤسسة")!==name);
+  }else{
+    purchases.forEach(p=>{ if((p.supplier||"بدون اسم مؤسسة")===name){ p.supplier=""; } });
+  }
+  await save("purchases",purchases);
+  delete supplierBalances[name];
+  await save("supplierBalances",supplierBalances);
+  if(purchaseSupplierFilter===name) purchaseSupplierFilter="";
+  toast(alsoDeleteInvoices ? "تم حذف المؤسسة وكل فواتيرها" : "تم حذف المؤسسة، وضلت فواتيرها بالسجل بدون اسم مؤسسة");
+  render();
+}
+
+/* --- materials catalog --- */
+let editingMaterialId = null;
+function filterSupplierSuggestions(val){
+  const box = document.getElementById("supplierSuggestions");
+  if(!box) return;
+  const q = val.trim().toLowerCase();
+  const names = [...new Set(purchases.map(p=>p.supplier).filter(Boolean))];
+  const matches = q ? names.filter(n=>n.toLowerCase().includes(q)) : names;
+  if(matches.length===0){ box.style.display="none"; box.innerHTML=""; return; }
+  box.innerHTML = matches.slice(0,8).map(n=>`<div class="autocomplete-item" onmousedown="selectSupplierSuggestion('${n.replace(/'/g,"\\'")}')">${n}</div>`).join("");
+  box.style.display = "block";
+}
+function selectSupplierSuggestion(name){
+  const el = document.getElementById("pSupplier");
+  if(el) el.value = name;
+  hideSupplierSuggestions(true);
+}
+function hideSupplierSuggestions(immediate){
+  const box = document.getElementById("supplierSuggestions");
+  if(!box) return;
+  if(immediate){ box.style.display="none"; box.innerHTML=""; return; }
+  setTimeout(()=>{ box.style.display="none"; }, 150);
+}
+function onPurchaseDescInput(val){
+  const m = materials.find(x=>x.name===val);
+  if(!m) return;
+  const priceEl=document.getElementById("pPrice"), catEl=document.getElementById("pCategory"), curEl=document.getElementById("pCurrency");
+  if(priceEl) priceEl.value = m.price;
+  if(catEl) catEl.value = m.category;
+  if(curEl) curEl.value = m.currency==='USD'?'USD':'SYP';
+}
+async function saveMaterial(){
+  const name = document.getElementById("mName").value.trim();
+  const price = Number(document.getElementById("mPrice").value)||0;
+  const currency = document.getElementById("mCurrency").value==="USD"?"USD":"SYP";
+  const category = document.getElementById("mCategory").value;
+  if(!name){ toast("عبي اسم المادة"); return; }
+  if(price<=0){ toast("عبي السعر"); return; }
+  if(editingMaterialId){
+    const m = materials.find(x=>x.id===editingMaterialId);
+    if(m){ m.name=name; m.price=price; m.currency=currency; m.category=category; }
+    editingMaterialId=null;
+    toast("تم حفظ التعديل");
+  }else{
+    materials.push({id:uid(), name, price, currency, category});
+    toast("تمت إضافة المادة للقائمة");
+  }
+  await save("materials",materials);
+  render();
+}
+function editMaterial(id){ editingMaterialId=id; render(); }
+function cancelEditMaterial(){ editingMaterialId=null; render(); }
+async function deleteMaterial(id){
+  materials = materials.filter(m=>m.id!==id);
+  if(editingMaterialId===id) editingMaterialId=null;
+  await save("materials",materials);
+  render();
+}
+
+/* --- AI invoice reading --- */
+let pendingInvoice = null;
+function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(",")[1]);
+    r.onerror=()=>rej(new Error("read failed"));
+    r.readAsDataURL(file);
+  });
+}
+async function handleInvoiceFile(file){
+  if(!file) return;
+  if(!settings.apiKey){
+    toast("لازم تحط مفتاح API أولاً من تبويب الإعدادات");
+    document.getElementById("invoiceCameraInput").value="";
+    document.getElementById("invoiceGalleryInput").value="";
+    return;
+  }
+  reading=true; render();
+  try{
+    const base64 = await fileToBase64(file);
+    const mediaType = file.type || "image/jpeg";
+    const prompt = `أنت تحلل صورة فاتورة شراء لمطعم (قد تكون فاتورة غاز، دجاج، خضار، لحوم، منتجات ألبان، مشروبات، مواد تنظيف، أو مواد غذائية عامة).
+اقرأ كل بند بالفاتورة مهما كان عددها، حتى لو كانت الفاتورة طويلة وفيها بنود كثيرة - لا تختصر ولا تتجاهل أي بند.
+انتبه للعملة: إذا الأسعار مكتوبة بعلامة $ أو مذكور "دولار" فالعملة USD، وإذا مكتوبة "ل.س" أو "ليرة" أو بدون رمز فالعملة SYP (افتراضي). ممكن يكون في بنود بعملات مختلفة بنفس الفاتورة، حدد عملة كل بند لحاله.
+اسم المؤسسة/المحل عادة موجود بأعلى الفاتورة كعنوان أو شعار.
+أرجع النتيجة بصيغة JSON فقط، بدون أي نص أو شرح أو علامات كود قبلها أو بعدها، بالشكل التالي بالضبط:
+{"date":"YYYY-MM-DD أو null إذا مش واضح","supplier":"اسم المؤسسة/المحل أو null إذا مش واضح","paid":true إذا الفاتورة مدفوعة نقداً أو false إذا آجلة/على الحساب/دين أو null إذا غير واضح,"items":[{"desc":"اسم المنتج","category":"واحد من: غاز, دجاج, خضار وفواكه, لحوم, منتجات ألبان, مشروبات, مواد تنظيف, أخرى","currency":"SYP أو USD","qty":رقم,"unitPrice":رقم,"total":رقم}]}
+إذا ما استطعت قراءة قيمة رقمية اجعلها 0. الكمية الافتراضية 1 إذا غير واضحة.`;
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(settings.apiKey)}`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        contents:[{
+          parts:[
+            {text: prompt},
+            {inline_data:{mime_type:mediaType, data:base64}}
+          ]
+        }]
+      })
+    });
+    const data = await response.json();
+    if(data.error){ throw new Error(data.error.message || "api error"); }
+    const raw = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || "";
+    if(!raw) throw new Error("no text in response");
+    const first = raw.indexOf("{");
+    const last = raw.lastIndexOf("}");
+    if(first===-1 || last===-1) throw new Error("no JSON object found: "+raw.slice(0,120));
+    const parsed = JSON.parse(raw.slice(first, last+1));
+    const items = Array.isArray(parsed.items) ? parsed.items : [];
+    if(items.length===0){ toast("ما قدرت اقرأ بنود من الصورة، جرب صورة أوضح"); reading=false; render(); return; }
+    const date = (parsed.date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)) ? parsed.date : todayISO();
+    const status = parsed.paid===true ? "paid" : "unpaid";
+    const supplier = (parsed.supplier && String(parsed.supplier).trim()) || "";
+    const normItems = items.map(it=>({
+      desc: it.desc || "بند بدون اسم",
+      category: PUR_CATS.includes(it.category) ? it.category : "أخرى",
+      qty: Number(it.qty)||1,
+      unitPrice: Number(it.unitPrice)||0,
+      currency: it.currency==="USD" ? "USD" : "SYP",
+      total: Number(it.total) || (Number(it.qty)||1)*(Number(it.unitPrice)||0)
+    }));
+    pendingInvoice = {
+      date, supplier, status,
+      items: normItems.map(it=>({...it, tempId: uid()}))
+    };
+    toast(`قرأت ${items.length} بند — راجعهم قبل الحفظ`);
+  }catch(e){
+    console.error("invoice read error:", e);
+    toast("صار خطأ بقراءة الفاتورة: "+(e.message||"جرب صورة أوضح"));
+  }
+  reading=false;
+  document.getElementById("invoiceCameraInput").value="";
+  document.getElementById("invoiceGalleryInput").value="";
+  render();
+}
+
+/* ================= العمال ================= */
+let editingWorkerId = null;
+let workersWeekStart = null, workersWeekEnd = null;
+function renderWorkers(){
+  const editing = workers.find(w=>w.id===editingWorkerId);
+  const rows = workers.map(w=>({w, result:workerNet(w), borrowed:workerBorrowedAmount(w)}));
+  const totalSalary = workers.reduce((s,w)=>s+(Number(w.weeklySalary)||0),0);
+  const totalBorrowed = workers.reduce((s,w)=>s+workerBorrowedAmount(w),0);
+  if(!workersWeekStart || !workersWeekEnd || todayISO()>workersWeekEnd){
+    const r = getWeekRangeForOffset(0);
+    workersWeekStart = r.start; workersWeekEnd = r.end;
+  }
+
+  return `
+    <div class="panel" style="border-color:var(--gold);">
+      <h2 class="section-title">📆 أسبوع العمال الحالي</h2>
+      <p class="muted" style="margin-top:0;">حدد من أي يوم لأي يوم بدك تحسب الأسبوع، وبيظهر نفس الرقم تلقائياً بتبويب التقارير يوم الخميس.</p>
+      <div class="field-row">
+        <div class="field"><label>من</label><input type="date" value="${workersWeekStart}" onchange="workersWeekStart=this.value; render();"></div>
+        <div class="field"><label>إلى</label><input type="date" value="${workersWeekEnd}" onchange="workersWeekEnd=this.value; render();"></div>
+      </div>
+      <div class="tstat" style="display:inline-block;margin-bottom:10px;">
+        <div class="l">إجمالي المستحق للعمال هالفترة</div>
+        <div class="v" style="color:var(--green);font-size:19px;">${money(totalSalary-totalBorrowed)} ل.س</div>
+      </div>
+      <div>
+        <button class="btn" style="background:var(--green);color:#0f1a10;" onclick="settleAllWorkersThisWeek()">✅ خالصين — استلموا رواتب هالأسبوع (الكل)</button>
+      </div>
+      <p class="muted" style="margin-top:8px;">هاد الزر بيسجل دفعة لكل عامل بصافيه الحالي عن الفترة يلي فوق، وبيصفّر السلف تلقائياً حتى تبلش أسبوع جديد نظيف.</p>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">${editing?'تعديل بيانات عامل: '+editing.name:'إضافة عامل'}</h2>
+      <div class="field-row">
+        <div class="field"><label>الاسم</label><input id="wName" placeholder="اسم العامل" value="${editing?editing.name:''}"></div>
+        <div class="field"><label>الأجر اليومي (اختياري)</label><input id="wDaily" type="number" min="0" value="${editing&&editing.dailyWage?editing.dailyWage:''}" oninput="dailyToWeekly()" placeholder="بيحسب الأسبوعي تلقائياً"></div>
+        <div class="field"><label>الراتب الأسبوعي (ل.س)</label><input id="wSalary" type="number" min="0" value="${editing?editing.weeklySalary:''}" oninput="updateResultPreview()"></div>
+      </div>
+      <p class="muted" style="margin-top:-4px;">اكتب الأجر اليومي وبينحسبلك الراتب الأسبوعي أوتوماتيك (يومي × ٧)، أو احذفه واكتب الأسبوعي مباشرة. السلف صارت تنضاف من قائمة العمال تحت، بتاريخها.</p>
+      <div class="tstat" style="display:inline-block;margin-bottom:10px;">
+        <div class="l">الصافي (الراتب ناقص السلف الحالية)</div>
+        <div class="v" id="resultPreview" style="color:var(--gold);">${editing?money(workerNet(editing)):'0'} ل.س</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="saveWorker()">${editing?'حفظ التعديل':'حفظ'}</button>
+        ${editing?`<button class="btn secondary" onclick="cancelEditWorker()">إلغاء</button>`:''}
+      </div>
+    </div>
+
+    <div class="totals-row">
+      <div class="tstat"><div class="l">إجمالي الرواتب الأسبوعية</div><div class="v" style="color:var(--gold);">${money(totalSalary)} ل.س</div></div>
+      <div class="tstat"><div class="l">إجمالي السلف الحالية</div><div class="v" style="color:var(--red);">${money(totalBorrowed)} ل.س</div></div>
+      <div class="tstat"><div class="l">الصافي المستحق</div><div class="v" style="color:var(--green);">${money(totalSalary-totalBorrowed)} ل.س</div></div>
+    </div>
+
+    <div class="panel">
+      <h2 class="section-title">قائمة العمال (${workers.length})</h2>
+      ${rows.length===0?`<div class="empty">لا يوجد عمال بعد</div>`:
+        rows.map(r=>{
+          const w = r.w;
+          const expanded = expandedWorkerId===w.id;
+          return `
+          <div class="invoice-card">
+            <div class="flex-between" style="flex-wrap:wrap;gap:6px;cursor:pointer;" onclick="toggleWorkerExpand('${w.id}')">
+              <div>
+                <b>${w.name}</b>
+                <div class="muted" style="font-size:11.5px;">راتب أسبوعي: ${money(w.weeklySalary)} ل.س</div>
+              </div>
+              <div style="text-align:left;display:flex;align-items:center;gap:8px;">
+                <div>
+                  <div class="muted" style="font-size:10.5px;">الصافي</div>
+                  <div style="color:${r.result>=0?'var(--green)':'var(--red)'};font-weight:700;font-size:15px;">${money(r.result)} ل.س</div>
+                </div>
+                <span class="muted" style="font-size:18px;">${expanded?'▴':'▾'}</span>
+              </div>
+            </div>
+            ${expanded?`
+              <div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px;">
+                <div class="totals-row" style="margin-bottom:10px;">
+                  <div class="tstat"><div class="l">الراتب الأسبوعي</div><div class="v" style="font-size:15px;">${money(w.weeklySalary)} ل.س</div></div>
+                  <div class="tstat"><div class="l">إجمالي السلف الحالية</div><div class="v" style="color:var(--red);font-size:15px;">${money(r.borrowed)} ل.س</div></div>
+                  <div class="tstat"><div class="l">الباقي له (الصافي)</div><div class="v" style="color:${r.result>=0?'var(--green)':'var(--red)'};font-size:15px;">${money(r.result)} ل.س</div></div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+                  <button class="btn secondary" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation(); editWorker('${w.id}')">✏️ تعديل بياناته</button>
+                  <button class="btn secondary" style="padding:4px 12px;font-size:12px;" onclick="event.stopPropagation(); openWorkerAdvance('${w.id}')">+ سلفة جديدة</button>
+                  <button class="btn blue" style="padding:4px 12px;font-size:12px;" onclick="event.stopPropagation(); openWorkerPayment('${w.id}')">+ تسجيل دفعة راتب</button>
+                  <button class="remove" onclick="event.stopPropagation(); deleteWorker('${w.id}')">🗑 حذف العامل</button>
+                </div>
+
+                ${(w.advances&&w.advances.length)?`
+                  <div style="margin-bottom:10px;">
+                    <b style="color:var(--gold);font-size:12.5px;">📅 سجل السلف (تاريخ — مبلغ)</b>
+                    <table class="sheet" style="margin-top:4px;">
+                      ${w.advances.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(a=>`
+                        <tr><td class="muted" style="width:40%;">${a.date}</td><td class="num" style="color:var(--red);">${money(a.amount)} ل.س</td><td style="width:30px;"><button class="remove" onclick="deleteWorkerAdvance('${w.id}','${a.id}')">✕</button></td></tr>
+                      `).join("")}
+                    </table>
+                  </div>
+                `:`<p class="muted">ما في سلف مسجلة لهاد العامل.</p>`}
+
+                ${(w.payments&&w.payments.length)?`
+                  <div>
+                    <b style="color:var(--gold);font-size:12.5px;">✅ سجل الرواتب المدفوعة</b>
+                    <table class="sheet" style="margin-top:4px;">
+                      ${w.payments.slice().sort((a,b)=>b.paidDate.localeCompare(a.paidDate)).map(pm=>`
+                        <tr><td class="muted" style="font-size:11px;">${pm.weekStart} ← ${pm.weekEnd}<br><span style="font-size:10px;">دفعت: ${pm.paidDate}</span></td><td class="num" style="color:var(--green);">${money(pm.amount)} ل.س</td><td style="width:30px;"><button class="remove" onclick="deleteWorkerPayment('${w.id}','${pm.id}')">✕</button></td></tr>
+                      `).join("")}
+                    </table>
+                  </div>
+                `:`<p class="muted">ما في رواتب مسجلة كمدفوعة بعد.</p>`}
+
+                ${payingWorkerAdvanceId===w.id?`
+                  <div class="panel" style="background:var(--panel-2);margin-top:10px;padding:10px;">
+                    <div class="field-row">
+                      <div class="field"><label>تاريخ السلفة</label><input id="waDate" type="date" value="${todayISO()}"></div>
+                      <div class="field"><label>المبلغ (ل.س)</label><input id="waAmount" type="number" min="0"></div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                      <button class="btn" onclick="addWorkerAdvance('${w.id}')">حفظ السلفة</button>
+                      <button class="btn secondary" onclick="cancelWorkerAdvance()">إلغاء</button>
+                    </div>
+                  </div>
+                `:''}
+                ${payingWorkerId===w.id?`
+                  <div class="panel" style="background:var(--panel-2);margin-top:10px;padding:10px;">
+                    <div class="field-row">
+                      <div class="field"><label>من (بداية الأسبوع)</label><input id="wpStart" type="date" value="${getWeekRangeForOffset(0).start}"></div>
+                      <div class="field"><label>إلى (نهاية الأسبوع)</label><input id="wpEnd" type="date" value="${getWeekRangeForOffset(0).end}"></div>
+                    </div>
+                    <div class="field-row">
+                      <div class="field"><label>المبلغ (ل.س)</label><input id="wpAmount" type="number" min="0" value="${Math.max(0,r.result)}"></div>
+                      <div class="field"><label>تاريخ الدفع الفعلي</label><input id="wpPaidDate" type="date" value="${todayISO()}"></div>
+                    </div>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-dim);margin-bottom:8px;">
+                      <input type="checkbox" id="wpResetBorrowed" checked style="width:auto;"> صفّر السلف الحالية بعد تسجيل الدفعة
+                    </label>
+                    <div style="display:flex;gap:8px;">
+                      <button class="btn" onclick="addWorkerPayment('${w.id}')">حفظ الدفعة</button>
+                      <button class="btn secondary" onclick="cancelWorkerPayment()">إلغاء</button>
+                    </div>
+                  </div>
+                `:''}
+              </div>
+            `:''}
+          </div>`;
+        }).join("")
+      }
+    </div>
+  `;
+}
+let expandedWorkerId = null;
+function toggleWorkerExpand(id){ expandedWorkerId = expandedWorkerId===id ? null : id; payingWorkerId=null; payingWorkerAdvanceId=null; render(); }
+let payingWorkerId = null;
+let payingWorkerAdvanceId = null;
+function openWorkerPayment(id){ payingWorkerId=id; render(); }
+function cancelWorkerPayment(){ payingWorkerId=null; render(); }
+function openWorkerAdvance(id){ payingWorkerAdvanceId=id; render(); }
+function cancelWorkerAdvance(){ payingWorkerAdvanceId=null; render(); }
+async function addWorkerAdvance(workerId){
+  const date = document.getElementById("waDate").value || todayISO();
+  const amount = Number(document.getElementById("waAmount").value);
+  if(!amount || amount<=0){ toast("عبي مبلغ صحيح"); return; }
+  const w = workers.find(x=>x.id===workerId);
+  if(!w) return;
+  if(!Array.isArray(w.advances)) w.advances = [];
+  w.advances.push({id:uid(), date, amount});
+  await save("workers",workers);
+  payingWorkerAdvanceId = null;
+  toast("تم تسجيل السلفة");
+  render();
+}
+async function deleteWorkerAdvance(workerId, advanceId){
+  const w = workers.find(x=>x.id===workerId);
+  if(!w || !Array.isArray(w.advances)) return;
+  w.advances = w.advances.filter(a=>a.id!==advanceId);
+  await save("workers",workers);
+  render();
+}
+async function addWorkerPayment(workerId){
+  const weekStart = document.getElementById("wpStart").value;
+  const weekEnd = document.getElementById("wpEnd").value;
+  const amount = Number(document.getElementById("wpAmount").value);
+  const paidDate = document.getElementById("wpPaidDate").value || todayISO();
+  const resetBorrowed = document.getElementById("wpResetBorrowed").checked;
+  if(!weekStart || !weekEnd){ toast("حدد بداية ونهاية الأسبوع"); return; }
+  if(!amount || amount<=0){ toast("عبي مبلغ صحيح"); return; }
+  const w = workers.find(x=>x.id===workerId);
+  if(!w) return;
+  if(!Array.isArray(w.payments)) w.payments = [];
+  w.payments.push({id:uid(), weekStart, weekEnd, amount, paidDate});
+  if(resetBorrowed) w.advances = [];
+  await save("workers",workers);
+  payingWorkerId = null;
+  toast("تم تسجيل دفعة الراتب");
+  render();
+}
+async function deleteWorkerPayment(workerId, paymentId){
+  const w = workers.find(x=>x.id===workerId);
+  if(!w || !Array.isArray(w.payments)) return;
+  w.payments = w.payments.filter(pm=>pm.id!==paymentId);
+  await save("workers",workers);
+  render();
+}
+async function settleAllWorkersThisWeek(){
+  const eligible = workers.filter(w=>workerNet(w)>0.001);
+  if(eligible.length===0){ toast("ما في عمال إلهم مستحقات هلق"); return; }
+  const list = eligible.map(w=>`${w.name}: ${money(workerNet(w))} ل.س`).join("\n");
+  if(!confirm(`رح يتسجل دفع لكل هدول العمال عن الفترة ${workersWeekStart} ← ${workersWeekEnd}:\n\n${list}\n\nمتأكد؟`)) return;
+  const paidDate = todayISO();
+  eligible.forEach(w=>{
+    if(!Array.isArray(w.payments)) w.payments = [];
+    w.payments.push({id:uid(), weekStart:workersWeekStart, weekEnd:workersWeekEnd, amount:workerNet(w), paidDate});
+    w.advances = [];
+  });
+  await save("workers",workers);
+  const len = Math.round((new Date(workersWeekEnd)-new Date(workersWeekStart))/86400000)+1;
+  const ns = new Date(workersWeekStart); ns.setDate(ns.getDate()+len);
+  const ne = new Date(workersWeekEnd); ne.setDate(ne.getDate()+len);
+  workersWeekStart = ns.toISOString().slice(0,10);
+  workersWeekEnd = ne.toISOString().slice(0,10);
+  toast("تم تسجيل رواتب كل العمال — خالصين هالأسبوع ✅ وانتقلنا للأسبوع الجاي");
+  render();
+}
+function dailyToWeekly(){
+  const dailyEl = document.getElementById("wDaily");
+  const salaryEl = document.getElementById("wSalary");
+  if(!dailyEl || !salaryEl) return;
+  const daily = Number(dailyEl.value)||0;
+  if(daily>0){ salaryEl.value = daily*7; }
+  updateResultPreview();
+}
+function updateResultPreview(){
+  const salaryEl = document.getElementById("wSalary");
+  const el = document.getElementById("resultPreview");
+  if(!salaryEl || !el) return;
+  const salary = Number(salaryEl.value)||0;
+  const borrowed = editingWorkerId ? workerBorrowedAmount(workers.find(x=>x.id===editingWorkerId)||{}) : 0;
+  el.textContent = money(salary-borrowed)+" ل.س";
+}
+async function saveWorker(){
+  const name = document.getElementById("wName").value.trim();
+  const dailyWage = Number(document.getElementById("wDaily").value)||0;
+  const weeklySalary = Number(document.getElementById("wSalary").value)||0;
+  if(!name){ toast("عبي اسم العامل"); return; }
+  if(weeklySalary<=0){ toast("عبي الراتب الأسبوعي (أو الأجر اليومي)"); return; }
+  if(editingWorkerId){
+    const w = workers.find(x=>x.id===editingWorkerId);
+    if(w){ w.name=name; w.dailyWage=dailyWage; w.weeklySalary=weeklySalary; }
+    editingWorkerId = null;
+    toast("تم حفظ التعديل");
+  }else{
+    workers.push({id:uid(), name, dailyWage, weeklySalary, advances:[], payments:[]});
+    toast("تمت إضافة العامل");
+  }
+  await save("workers",workers);
+  render();
+}
+function editWorker(id){
+  editingWorkerId = id;
+  render();
+}
+function cancelEditWorker(){
+  editingWorkerId = null;
+  render();
+}
+async function deleteWorker(id){
+  workers = workers.filter(w=>w.id!==id);
+  if(editingWorkerId===id) editingWorkerId=null;
+  await save("workers",workers);
+  render();
+}
+
+/* ================= المصاريف الثابتة ================= */
+const FIXED_SUGGESTIONS = ["إيجار المطعم","فاتورة الماء","فاتورة الغاز","مازوت","كهرباء","إنترنت"];
+const FIXED_FREQ_LABEL = {weekly:"أسبوعي", monthly:"شهري", once:"مرة وحدة"};
+function renderFixedExpenses(){
+  const editing = fixedExpenses.find(f=>f.id===editingFixedId);
+  const totals = {SYP:0, USD:0};
+  const unpaidTotals = {SYP:0, USD:0};
+  fixedExpenses.forEach(f=>{
+    const cur = f.currency==="USD"?"USD":"SYP";
+    totals[cur]+=Number(f.amount)||0;
+    const rem = fixedRemaining(f);
+    if(rem>0.001) unpaidTotals[cur]+=rem;
+  });
+  const sorted = fixedExpenses.slice().sort((a,b)=>b.date.localeCompare(a.date));
+
+  // group by date for the "خانة يومية" view
+  const byDate = {};
+  fixedExpenses.forEach(f=>{
+    byDate[f.date] = byDate[f.date] || {SYP:0, USD:0, items:[]};
+    byDate[f.date][f.currency==="USD"?"USD":"SYP"] += Number(f.amount)||0;
+    byDate[f.date].items.push(f);
+  });
+  const dateKeys = Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+
+  return `
+    <div class="panel">
+      <h2 class="section-title">${editing?'تعديل مصروف ثابت':'إضافة مصروف ثابت'}</h2>
+      <p class="muted" style="margin-top:0;">إيجار المطعم، فاتورة الماء، الغاز، المازوت، أو أي مصروف يومي تاني بدك تسجله هون.</p>
+      <div class="field-row">
+        <div class="field"><label>الاسم</label>
+          <input id="fName" list="fixedDatalist" value="${editing?editing.name:''}" placeholder="مثال: إيجار المطعم">
+          <datalist id="fixedDatalist">${FIXED_SUGGESTIONS.map(s=>`<option value="${s}">`).join("")}</datalist>
+        </div>
+        <div class="field"><label>المبلغ</label><input id="fAmount" type="number" min="0" value="${editing?editing.amount:''}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>العملة</label>
+          <select id="fCurrency">
+            <option value="SYP" ${!editing||editing.currency==='SYP'?'selected':''}>ليرة سورية</option>
+            <option value="USD" ${editing&&editing.currency==='USD'?'selected':''}>دولار</option>
+          </select>
+        </div>
+        <div class="field"><label>التكرار</label>
+          <select id="fFrequency">
+            <option value="weekly" ${editing&&editing.frequency==='weekly'?'selected':''}>أسبوعي</option>
+            <option value="monthly" ${!editing||editing.frequency==='monthly'?'selected':''}>شهري</option>
+            <option value="once" ${editing&&editing.frequency==='once'?'selected':''}>مرة وحدة</option>
+          </select>
+        </div>
+        <div class="field"><label>التاريخ</label><input id="fDate" type="date" value="${editing?editing.date:todayISO()}"></div>
+      </div>
+      ${!editing?`
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-dim);margin-bottom:10px;">
+          <input type="checkbox" id="fPaidNow" style="width:auto;"> دفعته فوراً (سجله مدفوع بنفس التاريخ)
+        </label>
+      `:''}
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="saveFixedExpense()">${editing?'حفظ التعديل':'إضافة'}</button>
+        ${editing?`<button class="btn secondary" onclick="cancelEditFixed()">إلغاء</button>`:''}
+      </div>
+    </div>
+    <div class="totals-row">
+      <div class="tstat"><div class="l">💰 المبلغ الكامل اللي طلع من المطعم (ل.س)</div><div class="v" style="color:var(--red);font-size:19px;">${money(totals.SYP)} ل.س</div></div>
+      ${totals.USD?`<div class="tstat"><div class="l">المبلغ الكامل ($)</div><div class="v" style="color:var(--red);">${money(totals.USD)} $</div></div>`:''}
+      <div class="tstat"><div class="l">غير مدفوع (ل.س)</div><div class="v" style="color:var(--gold);">${money(unpaidTotals.SYP)} ل.س</div></div>
+      ${unpaidTotals.USD?`<div class="tstat"><div class="l">غير مدفوع ($)</div><div class="v" style="color:var(--gold);">${money(unpaidTotals.USD)} $</div></div>`:''}
+    </div>
+
+    <div class="panel">
+      <h2 class="section-title">قائمة مصنفة حسب اليوم</h2>
+      ${dateKeys.length===0?`<div class="empty">ما في مصاريف مسجلة بعد</div>`:
+        dateKeys.map(d=>{
+          const day = byDate[d];
+          return `
+          <div style="margin-bottom:10px;border-bottom:1px dashed var(--line);padding-bottom:8px;">
+            <div class="flex-between">
+              <b style="color:var(--gold);">${d}</b>
+              <span style="color:var(--red);font-weight:700;">${day.SYP?money(day.SYP)+' ل.س':''}${day.SYP&&day.USD?' + ':''}${day.USD?money(day.USD)+' $':''}</span>
+            </div>
+            ${day.items.map(f=>`<div class="muted" style="font-size:12.5px;padding:2px 0;">— ${f.name}: ${money(f.amount)} ${f.currency==='USD'?'$':'ل.س'} <span class="cat-tag">${FIXED_FREQ_LABEL[f.frequency]||'شهري'}</span></div>`).join("")}
+          </div>`;
+        }).join("")
+      }
+    </div>
+
+    <div class="panel">
+      <h2 class="section-title">سجل المصاريف الثابتة (${fixedExpenses.length})</h2>
+      ${sorted.length===0?`<div class="empty">ما في مصاريف ثابتة مسجلة بعد</div>`:
+        sorted.map(f=>{
+          const cur = f.currency==="USD"?"USD":"SYP";
+          const sym = CUR_LABEL[cur];
+          const paidAmt = fixedPaidAmount(f);
+          const remaining = fixedRemaining(f);
+          let badge;
+          if(remaining<=0.001) badge = `<span class="status-btn paid">مدفوعة بالكامل</span>`;
+          else if(paidAmt>0.001) badge = `<span class="status-btn" style="background:var(--gold);color:#1c1b19;border-color:var(--gold);">جزئي — باقي ${money(remaining)} ${sym}</span>`;
+          else badge = `<span class="status-btn unpaid">غير مدفوعة</span>`;
+          return `
+          <div class="invoice-card">
+            <div class="flex-between" style="flex-wrap:wrap;gap:6px;">
+              <div>
+                <b>${f.name}</b> <span class="cat-tag">${FIXED_FREQ_LABEL[f.frequency]||'شهري'}</span>
+                <div class="muted" style="font-size:11.5px;">${f.date}</div>
+              </div>
+              <div style="text-align:left;">
+                <div style="color:var(--red);font-weight:700;">${money(f.amount)} ${sym}</div>
+                <div style="display:flex;gap:4px;">
+                  <button class="btn secondary" style="padding:2px 8px;font-size:11px;" onclick="editFixedExpense('${f.id}')">تعديل</button>
+                  <button class="remove" onclick="deleteFixedExpense('${f.id}')">✕</button>
+                </div>
+              </div>
+            </div>
+            <div class="flex-between" style="margin-top:8px;flex-wrap:wrap;gap:6px;">
+              <div>${badge}</div>
+              ${remaining>0.001?`<button class="btn secondary" style="padding:4px 12px;font-size:12px;" onclick="openFixedPayment('${f.id}')">+ دفع ${cur==='USD'?'دولار':'سوري'}</button>`:''}
+            </div>
+            ${(f.payments&&f.payments.length)?`
+              <div class="muted" style="margin-top:6px;font-size:11.5px;">
+                ${f.payments.map(pm=>`<div class="flex-between" style="padding:2px 0;">
+                  <span>دفعة ${pm.date}: ${money(pm.amount)} ${sym}${pm.sypPaid?` (دفعت ${money(pm.sypPaid)} ل.س حقها)`:''}</span>
+                  <span style="cursor:pointer;color:var(--red);" onclick="deleteFixedPayment('${f.id}','${pm.id}')">✕</span>
+                </div>`).join("")}
+              </div>
+            `:''}
+            ${payingFixedId===f.id?`
+              <div class="panel" style="background:var(--panel-2);margin-top:8px;padding:10px;">
+                <div class="field-row">
+                  <div class="field"><label>المبلغ (${sym})</label><input id="fpAmount" type="number" min="0" value="${remaining}"></div>
+                  <div class="field"><label>التاريخ</label><input id="fpDate" type="date" value="${todayISO()}"></div>
+                </div>
+                ${cur==='USD'?`<p class="muted" style="margin-top:-4px;">لو اشتريت هالدولار بليرة، سجله من "سجل شراء الدولار" بتبويب المشتريات بدل ما تكرره هون.</p>`:''}
+                <div style="display:flex;gap:8px;">
+                  <button class="btn" onclick="addFixedPayment('${f.id}')">حفظ الدفعة</button>
+                  <button class="btn secondary" onclick="cancelFixedPayment()">إلغاء</button>
+                </div>
+              </div>
+            `:''}
+          </div>`;
+        }).join("")
+      }
+    </div>
+  `;
+}
+let editingFixedId = null;
+let payingFixedId = null;
+function openFixedPayment(id){ payingFixedId=id; render(); }
+function cancelFixedPayment(){ payingFixedId=null; render(); }
+async function addFixedPayment(fixedId){
+  const amount = Number(document.getElementById("fpAmount").value);
+  const date = document.getElementById("fpDate").value || todayISO();
+  if(!amount || amount<=0){ toast("عبي مبلغ صحيح"); return; }
+  const f = fixedExpenses.find(x=>x.id===fixedId);
+  if(!f) return;
+  if(!Array.isArray(f.payments)) f.payments = [];
+  f.payments.push({id:uid(), date, amount});
+  await save("fixedExpenses",fixedExpenses);
+  payingFixedId = null;
+  toast("تم تسجيل الدفعة");
+  render();
+}
+async function deleteFixedPayment(fixedId, paymentId){
+  const f = fixedExpenses.find(x=>x.id===fixedId);
+  if(!f || !Array.isArray(f.payments)) return;
+  f.payments = f.payments.filter(pm=>pm.id!==paymentId);
+  await save("fixedExpenses",fixedExpenses);
+  render();
+}
+async function saveFixedExpense(){
+  const name = document.getElementById("fName").value.trim();
+  const amount = Number(document.getElementById("fAmount").value)||0;
+  const currency = document.getElementById("fCurrency").value==="USD"?"USD":"SYP";
+  const frequency = document.getElementById("fFrequency").value;
+  const date = document.getElementById("fDate").value||todayISO();
+  if(!name){ toast("عبي اسم المصروف"); return; }
+  if(amount<=0){ toast("عبي المبلغ"); return; }
+  if(editingFixedId){
+    const f = fixedExpenses.find(x=>x.id===editingFixedId);
+    if(f){ f.name=name; f.amount=amount; f.currency=currency; f.frequency=frequency; f.date=date; }
+    editingFixedId=null;
+    toast("تم حفظ التعديل");
+  }else{
+    const paidNow = document.getElementById("fPaidNow") && document.getElementById("fPaidNow").checked;
+    fixedExpenses.push({id:uid(), name, amount, currency, frequency, date, payments: paidNow ? [{id:uid(), date, amount}] : []});
+    toast("تمت الإضافة");
+  }
+  await save("fixedExpenses",fixedExpenses);
+  render();
+}
+function editFixedExpense(id){ editingFixedId=id; render(); }
+function cancelEditFixed(){ editingFixedId=null; render(); }
+async function deleteFixedExpense(id){
+  fixedExpenses = fixedExpenses.filter(f=>f.id!==id);
+  if(editingFixedId===id) editingFixedId=null;
+  await save("fixedExpenses",fixedExpenses);
+  render();
+}
+
+/* ================= المبيعات ================= */
+function renderSales(){
+  const totals = {SYP:0, USD:0};
+  sales.forEach(s=>{ totals[s.currency==="USD"?"USD":"SYP"] += s.total; });
+  const sorted = sales.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const dn = computeDailyNet(dailyNetDate);
+  const cumulative = computeCumulativeNet(dailyNetDate);
+  const dayAdjustments = netAdjustments.filter(a=>a.date===dailyNetDate);
+  return `
+    <div class="panel">
+      <h2 class="section-title">إضافة مبيعات</h2>
+      <div class="field-row">
+        <div class="field"><label>الوصف / الصنف</label><input id="sDesc" placeholder="مثال: مبيعات الظهر"></div>
+        <div class="field"><label>الكمية</label><input id="sQty" type="number" min="0" value="1"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>السعر</label><input id="sPrice" type="number" min="0"></div>
+        <div class="field"><label>العملة</label>
+          <select id="sCurrency">
+            <option value="SYP">ليرة سورية (ل.س)</option>
+            <option value="USD">دولار ($)</option>
+          </select>
+        </div>
+        <div class="field"><label>التاريخ</label><input id="sDate" type="date" value="${todayISO()}"></div>
+      </div>
+      <button class="btn" onclick="addSale()">إضافة</button>
+    </div>
+    <div class="panel" style="border-color:var(--gold);">
+      <h2 class="section-title">📆 الصافي اليومي</h2>
+      <div class="field" style="max-width:200px;"><label>اليوم</label><input type="date" value="${dailyNetDate}" onchange="dailyNetDate=this.value; render();"></div>
+      <div class="totals-row">
+        <div class="tstat"><div class="l">مبيعات اليوم (ل.س)</div><div class="v" style="color:var(--green);">${money(dn.sales)} ل.س</div></div>
+        <div class="tstat"><div class="l">مصاريف اليوم</div><div class="v" style="color:var(--red);">${money(dn.expenses)} ل.س</div></div>
+        <div class="tstat"><div class="l">الصافي</div><div class="v" style="color:${dn.net>=0?'var(--green)':'var(--red)'};font-size:20px;">${money(dn.net)} ل.س</div></div>
+        <div class="tstat"><div class="l">الصافي التراكمي حتى هالتاريخ</div><div class="v" style="color:${cumulative>=0?'var(--green)':'var(--red)'};font-size:20px;">${money(cumulative)} ل.س</div></div>
+      </div>
+      ${dn.expenses<=0.001 ? `<p class="muted" style="margin-top:4px;">ما في مصاريف مسجلة هالتاريخ — الصافي = كامل المبيعات بالليرة.</p>` : ''}
+      <p class="muted" style="margin-top:4px;">الصافي اليومي بيحسب المبيعات والمصاريف بالليرة السورية بس. مبيعات الدولار محسوبة لحالها بالإجماليات تحت.</p>
+      ${dayAdjustments.length?`
+        <div class="muted" style="margin-top:8px;font-size:11.5px;">
+          <b style="color:var(--ink);">تعديلات يدوية هالتاريخ:</b>
+          ${dayAdjustments.map(a=>`<div class="flex-between" style="padding:2px 0;">
+            <span>${a.amount>=0?'+':''}${money(a.amount)} ل.س${a.note?' — '+a.note:''}</span>
+            <span style="cursor:pointer;color:var(--red);" onclick="deleteNetAdjustment('${a.id}')">✕</span>
+          </div>`).join("")}
+        </div>
+      `:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <button class="btn secondary" onclick="openNetAdjustment()">✏️ تعديل الصافي (تصحيح خطأ)</button>
+        <button class="btn secondary" onclick="setNetBaseline()">🏁 ${netBaseline?'تعديل نقطة البداية':'تعيين نقطة بداية للصافي'}</button>
+        ${netBaseline?`<button class="btn secondary" style="color:var(--red);" onclick="clearNetBaseline()">إلغاء نقطة البداية</button>`:''}
+      </div>
+      ${netBaseline?`<p class="muted" style="margin-top:6px;">نقطة البداية الحالية: الصافي = ${money(netBaseline.amount)} ل.س بتاريخ ${netBaseline.date} — أي شي قبل هالتاريخ منسي وما بينحسب.</p>`:''}
+      ${addingAdjustment?`
+        <div class="panel" style="background:var(--panel-2);margin-top:8px;padding:10px;">
+          <p class="muted" style="margin-top:0;">استخدم هاد لتصحيح صافي يوم معين بدون ما تدور على السجل الأصلي الغلط. اكتب مبلغ موجب لو الصافي أقل مما يجب، أو سالب لو أكتر مما يجب.</p>
+          <div class="field-row">
+            <div class="field"><label>التاريخ</label><input id="adjDate" type="date" value="${dailyNetDate}"></div>
+            <div class="field"><label>المبلغ (+ أو -)</label><input id="adjAmount" type="number" placeholder="مثال: 50000 أو -50000"></div>
+          </div>
+          <div class="field"><label>ملاحظة (اختياري)</label><input id="adjNote" placeholder="سبب التعديل"></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn" onclick="saveNetAdjustment()">حفظ التعديل</button>
+            <button class="btn secondary" onclick="cancelNetAdjustment()">إلغاء</button>
+          </div>
+        </div>
+      `:''}
+    </div>
+    <div class="totals-row">
+      <div class="tstat"><div class="l">إجمالي المبيعات (ل.س)</div><div class="v" style="color:var(--green);">${money(totals.SYP)} ل.س</div></div>
+      <div class="tstat"><div class="l">إجمالي المبيعات ($)</div><div class="v" style="color:var(--green);">${money(totals.USD)} $</div></div>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">سجل المبيعات (${sales.length})</h2>
+      ${sorted.length===0?`<div class="empty">ما في مبيعات مسجلة بعد</div>`:`
+        <table class="sheet">
+          <tr><th>التاريخ</th><th>الوصف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th></th></tr>
+          ${sorted.map(s=>{
+            const sym = CUR_LABEL[s.currency==="USD"?"USD":"SYP"];
+            return `
+            <tr>
+              <td class="muted">${s.date}</td>
+              <td>${s.desc}</td>
+              <td class="num">${s.qty}</td>
+              <td class="num">${money(s.price)} ${sym}</td>
+              <td class="num" style="color:var(--green);">${money(s.total)} ${sym}</td>
+              <td><button class="remove" onclick="deleteSale('${s.id}')">✕</button></td>
+            </tr>
+          `;}).join("")}
+        </table>
+      `}
+    </div>
+  `;
+}
+let addingAdjustment = false;
+function openNetAdjustment(){ addingAdjustment=true; render(); }
+function cancelNetAdjustment(){ addingAdjustment=false; render(); }
+async function saveNetAdjustment(){
+  const date = document.getElementById("adjDate").value || dailyNetDate;
+  const amount = Number(document.getElementById("adjAmount").value);
+  const note = document.getElementById("adjNote").value.trim();
+  if(!amount){ toast("عبي مبلغ (موجب أو سالب)"); return; }
+  netAdjustments.push({id:uid(), date, amount, note});
+  await save("netAdjustments",netAdjustments);
+  addingAdjustment = false;
+  toast("تم حفظ التعديل");
+  render();
+}
+async function deleteNetAdjustment(id){
+  netAdjustments = netAdjustments.filter(a=>a.id!==id);
+  await save("netAdjustments",netAdjustments);
+  render();
+}
+async function addSale(){
+  const desc=document.getElementById("sDesc").value.trim();
+  const qty=Number(document.getElementById("sQty").value)||1;
+  const price=Number(document.getElementById("sPrice").value)||0;
+  const currency=document.getElementById("sCurrency").value==="USD"?"USD":"SYP";
+  const date=document.getElementById("sDate").value||todayISO();
+  if(!desc||price<=0){ toast("عبي الوصف والسعر"); return; }
+  sales.push({id:uid(),date,desc,qty,price,currency,total:qty*price});
+  await save("sales",sales);
+  toast("تمت الإضافة");
+  render();
+}
+async function deleteSale(id){ sales=sales.filter(s=>s.id!==id); await save("sales",sales); render(); }
+
+/* ================= التقارير ================= */
+function getWeekRangeForOffset(offset){
+  const now = new Date();
+  const day = now.getDay(); // 0=Sunday
+  const sunday = new Date(now); sunday.setDate(now.getDate()-day+offset*7);
+  const thursday = new Date(sunday); thursday.setDate(sunday.getDate()+4);
+  return {start: sunday.toISOString().slice(0,10), end: thursday.toISOString().slice(0,10)};
+}
+function countThursdaysInMonth(yearMonth){
+  const [y,m] = yearMonth.split("-").map(Number);
+  const daysInMonth = new Date(y,m,0).getDate();
+  let count=0;
+  for(let d=1; d<=daysInMonth; d++){ if(new Date(y,m-1,d).getDay()===4) count++; }
+  return count;
+}
+function setReportsMonth(v){ reportsMonth = v; render(); }
+function setRangeStart(v){ reportsRangeStart=v; render(); }
+function setRangeEnd(v){ reportsRangeEnd=v; render(); }
+function shiftRange(dir){
+  const s = new Date(reportsRangeStart), e = new Date(reportsRangeEnd);
+  const len = Math.round((e-s)/86400000)+1;
+  s.setDate(s.getDate()+dir*len); e.setDate(e.getDate()+dir*len);
+  reportsRangeStart = s.toISOString().slice(0,10);
+  reportsRangeEnd = e.toISOString().slice(0,10);
+  render();
+}
+function resetRangeToThisWeek(){
+  const r = getWeekRangeForOffset(0);
+  reportsRangeStart = r.start; reportsRangeEnd = r.end;
+  render();
+}
+let dailyNetDate = todayISO();
+function computeDailyNet(iso){
+  const daySales = sales.filter(s=>s.date===iso && (s.currency||'SYP')==='SYP').reduce((s,x)=>s+x.total,0);
+  let dayPurchasesPaid = 0;
+  purchases.forEach(p=>{
+    if(p.currency==='USD') return;
+    (p.payments||[]).forEach(pm=>{ if(pm.date===iso){ dayPurchasesPaid += Number(pm.amount)||0; } });
+  });
+  const dayFixed = fixedExpenses.filter(f=>f.date===iso && (f.currency||'SYP')==='SYP').reduce((s,x)=>s+(Number(x.amount)||0),0);
+  const dayUsdBuys = usdBuys.filter(u=>u.date===iso).reduce((s,u)=>s+(Number(u.syp)||0),0);
+  let dayWorkerPay = 0;
+  workers.forEach(w=>{
+    (w.payments||[]).forEach(pm=>{ if(pm.paidDate===iso){ dayWorkerPay += Number(pm.amount)||0; } });
+    (w.advances||[]).forEach(a=>{ if(a.date===iso){ dayWorkerPay += Number(a.amount)||0; } });
+  });
+  const dayAdjustments = netAdjustments.filter(a=>a.date===iso).reduce((s,a)=>s+(Number(a.amount)||0),0);
+  return {sales:daySales, expenses:dayPurchasesPaid+dayFixed+dayUsdBuys+dayWorkerPay, net: daySales-(dayPurchasesPaid+dayFixed+dayUsdBuys+dayWorkerPay)+dayAdjustments, adjustments:dayAdjustments};
+}
+function getEarliestTxDate(){
+  const dates = [];
+  sales.forEach(s=>dates.push(s.date));
+  purchases.forEach(p=>dates.push(p.date));
+  fixedExpenses.forEach(f=>dates.push(f.date));
+  netAdjustments.forEach(a=>dates.push(a.date));
+  workers.forEach(w=>(w.payments||[]).forEach(pm=>{ if(pm.paidDate) dates.push(pm.paidDate); }));
+  if(dates.length===0) return null;
+  return dates.sort()[0];
+}
+function computeCumulativeNet(uptoIso){
+  if(netBaseline && netBaseline.date){
+    if(uptoIso<netBaseline.date) return 0;
+    let total = Number(netBaseline.amount)||0;
+    const cur = new Date(netBaseline.date); cur.setDate(cur.getDate()+1);
+    const end = new Date(uptoIso);
+    while(cur<=end){
+      total += computeDailyNet(cur.toISOString().slice(0,10)).net;
+      cur.setDate(cur.getDate()+1);
+    }
+    return total;
+  }
+  const earliest = getEarliestTxDate();
+  if(!earliest || earliest>uptoIso) return 0;
+  let total = 0;
+  const cur = new Date(earliest);
+  const end = new Date(uptoIso);
+  while(cur<=end){
+    total += computeDailyNet(cur.toISOString().slice(0,10)).net;
+    cur.setDate(cur.getDate()+1);
+  }
+  return total;
+}
+async function setNetBaseline(){
+  const date = prompt("من أي تاريخ بدك تبلش تحسب؟ (يعني هاد اليوم وقبله منسى)", todayISO());
+  if(date===null) return;
+  const amount = prompt(`شو الصافي التراكمي الصحيح حتى تاريخ ${date}؟`, "0");
+  if(amount===null) return;
+  netBaseline = {date, amount: Number(amount)||0};
+  await save("netBaseline",netBaseline);
+  toast("تم تعيين نقطة البداية — أي حساب قبل هالتاريخ صار منسي");
+  render();
+}
+async function clearNetBaseline(){
+  if(!confirm("متأكد بدك تلغي نقطة البداية وترجع للحساب من أول تسجيل عندك؟")) return;
+  netBaseline = null;
+  await save("netBaseline",null);
+  toast("تم الإلغاء");
+  render();
+}
+
+function renderReports(){
+  if(!reportsRangeStart || !reportsRangeEnd){
+    const r = getWeekRangeForOffset(0);
+    reportsRangeStart = r.start; reportsRangeEnd = r.end;
+  }
+  const start = reportsRangeStart, end = reportsRangeEnd;
+  const dn = computeDailyNet(dailyNetDate);
+  const rangeDays = Math.max(1, Math.round((new Date(end)-new Date(start))/86400000)+1);
+  let weekNetSum = 0;
+  for(let i=0;i<rangeDays;i++){ const dt=new Date(start); dt.setDate(dt.getDate()+i); weekNetSum += computeDailyNet(dt.toISOString().slice(0,10)).net; }
+  const [dnY,dnM] = reportsMonth.split("-").map(Number);
+  const daysInReportMonth = new Date(dnY,dnM,0).getDate();
+  let monthNetSum = 0;
+  for(let d=1; d<=daysInReportMonth; d++){ monthNetSum += computeDailyNet(`${reportsMonth}-${String(d).padStart(2,'0')}`).net; }
+  const weekSales = sales.filter(s=>s.date>=start && s.date<=end);
+  const weekPurchases = purchases.filter(p=>p.date>=start && p.date<=end);
+  const weekSalesTotal = {SYP:0, USD:0};
+  weekSales.forEach(s=>{ weekSalesTotal[s.currency==="USD"?"USD":"SYP"] += s.total; });
+  const weekPurchasesTotal = {SYP:0, USD:0};
+  weekPurchases.forEach(p=>{ weekPurchasesTotal[p.currency==="USD"?"USD":"SYP"] += p.total; });
+  const laborTotal = workers.reduce((s,w)=>s+Math.max(0,workerNet(w)),0);
+
+  const weekFixed = fixedExpenses.filter(f=>f.date>=start && f.date<=end);
+  let weekFixedPaid = 0;
+  let weekPurchasesPaid = 0;
+  purchases.forEach(p=>{
+    if(p.currency==='USD') return;
+    (p.payments||[]).forEach(pm=>{ if(pm.date>=start && pm.date<=end){ weekPurchasesPaid += Number(pm.amount)||0; } });
+  });
+  fixedExpenses.forEach(f=>{
+    if(f.currency==='USD') return;
+    (f.payments||[]).forEach(pm=>{ if(pm.date>=start && pm.date<=end){ weekFixedPaid += Number(pm.amount)||0; } });
+  });
+  const weekUsdBuysSpent = usdBuys.filter(u=>u.date>=start && u.date<=end).reduce((s,u)=>s+(Number(u.syp)||0),0);
+  const weekSpentTotal = weekPurchasesPaid + laborTotal + weekFixedPaid + weekUsdBuysSpent;
+  const weekCashRemaining = weekSalesTotal.SYP - weekSpentTotal;
+  const unpaidPurchasesAll = purchases.filter(p=>p.currency!=='USD').reduce((s,p)=>s+purchaseRemaining(p),0) + Object.values(supplierBalances).reduce((s,b)=>s+(Number(b.SYP)||0),0);
+  const unpaidFixedAll = fixedExpenses.filter(f=>f.currency!=='USD').reduce((s,f)=>s+fixedRemaining(f),0);
+  const workersOwedAll = workers.reduce((s,w)=>s+Math.max(0,workerNet(w)),0);
+  const totalStillOwed = unpaidPurchasesAll + unpaidFixedAll + workersOwedAll;
+
+  const bySupplier = {};
+  purchases.forEach(p=>{
+    const key = p.supplier || "بدون اسم مؤسسة";
+    (p.payments||[]).forEach(pm=>{
+      if(pm.date>=start && pm.date<=end){
+        bySupplier[key] = bySupplier[key] || {SYP:0, USD:0};
+        bySupplier[key][p.currency==="USD"?"USD":"SYP"] += Number(pm.amount)||0;
+      }
+    });
+  });
+
+  const days = [];
+  for(let i=0;i<rangeDays;i++){
+    const dt = new Date(start); dt.setDate(dt.getDate()+i);
+    const iso = dt.toISOString().slice(0,10);
+    const dn2 = computeDailyNet(iso);
+    days.push({iso, label: dt.toLocaleDateString("ar-SY",{weekday:"long"}), daySales:dn2.sales, dayPurchasesSYP:dn2.expenses, balance: dn2.net});
+  }
+
+  const monthSales = sales.filter(s=>s.date.startsWith(reportsMonth)).reduce((s,x)=>s+x.total,0);
+  const monthPurchases = {SYP:0, USD:0};
+  purchases.filter(p=>p.date.startsWith(reportsMonth)).forEach(p=>{ monthPurchases[p.currency==="USD"?"USD":"SYP"] += p.total; });
+  const thursdaysCount = countThursdaysInMonth(reportsMonth);
+  const monthLaborEstimate = laborTotal * thursdaysCount;
+  const monthFixedEstimate = fixedExpenses.filter(f=>(f.currency||'SYP')==='SYP').reduce((s,f)=>{
+    if(f.frequency==='monthly') return s+(Number(f.amount)||0);
+    if(f.frequency==='weekly') return s+(Number(f.amount)||0)*thursdaysCount;
+    if(f.date.startsWith(reportsMonth)) return s+(Number(f.amount)||0);
+    return s;
+  },0);
+  const monthNetProfit = monthSales - monthPurchases.SYP - monthLaborEstimate - monthFixedEstimate;
+
+  return `
+    <div class="panel" style="border-color:var(--gold);">
+      <h2 class="section-title">📆 الصافي اليومي</h2>
+      <div class="field" style="max-width:200px;"><label>اختار اليوم</label><input type="date" value="${dailyNetDate}" onchange="dailyNetDate=this.value; render();"></div>
+      <div class="totals-row">
+        <div class="tstat"><div class="l">مبيعات اليوم</div><div class="v" style="color:var(--green);">${money(dn.sales)} ل.س</div></div>
+        <div class="tstat"><div class="l">مصاريف اليوم</div><div class="v" style="color:var(--red);">${money(dn.expenses)} ل.س</div></div>
+        <div class="tstat"><div class="l">الصافي</div><div class="v" style="color:${dn.net>=0?'var(--green)':'var(--red)'};font-size:20px;">${money(dn.net)} ل.س</div></div>
+        <div class="tstat"><div class="l">الصافي التراكمي حتى هالتاريخ</div><div class="v" style="color:${computeCumulativeNet(dailyNetDate)>=0?'var(--green)':'var(--red)'};font-size:20px;">${money(computeCumulativeNet(dailyNetDate))} ل.س</div></div>
+      </div>
+      <div class="totals-row" style="margin-top:4px;">
+        <div class="tstat"><div class="l">إجمالي صافي هالأسبوع</div><div class="v" style="color:${weekNetSum>=0?'var(--green)':'var(--red)'};">${money(weekNetSum)} ل.س</div></div>
+        <div class="tstat"><div class="l">إجمالي صافي شهر ${reportsMonth}</div><div class="v" style="color:${monthNetSum>=0?'var(--green)':'var(--red)'};">${money(monthNetSum)} ل.س</div></div>
+      </div>
+      <p class="muted" style="margin-top:6px;">الصافي = المبيعات ناقص (المشتريات + المصاريف الثابتة + رواتب) المسجلة بنفس اليوم. عدّل التفاصيل والتعديلات اليدوية من تبويب "المبيعات".</p>
+    </div>
+    <div class="panel">
+      <div class="flex-between" style="margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <h2 class="section-title" style="margin:0;">📋 جرد الفترة</h2>
+        <button class="btn secondary" style="padding:5px 12px;" onclick="resetRangeToThisWeek()">هالأسبوع</button>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>من</label><input type="date" value="${start}" onchange="setRangeStart(this.value)"></div>
+        <div class="field"><label>إلى</label><input type="date" value="${end}" onchange="setRangeEnd(this.value)"></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <button class="btn secondary" style="padding:5px 12px;flex:1;" onclick="shiftRange(-1)">← الفترة السابقة (بنفس الطول)</button>
+        <button class="btn secondary" style="padding:5px 12px;flex:1;" onclick="shiftRange(1)">الفترة الجاية (بنفس الطول) →</button>
+      </div>
+      <div class="totals-row">
+        <div class="tstat"><div class="l">مبيعات الفترة (ل.س)</div><div class="v" style="color:var(--green);">${money(weekSalesTotal.SYP)} ل.س</div></div>
+        ${weekSalesTotal.USD?`<div class="tstat"><div class="l">مبيعات الفترة ($)</div><div class="v" style="color:var(--green);">${money(weekSalesTotal.USD)} $</div></div>`:''}
+        <div class="tstat"><div class="l">مشتريات الفترة (ل.س)</div><div class="v" style="color:var(--red);">${money(weekPurchasesTotal.SYP)} ل.س</div></div>
+        ${weekPurchasesTotal.USD?`<div class="tstat"><div class="l">مشتريات الفترة ($)</div><div class="v" style="color:var(--red);">${money(weekPurchasesTotal.USD)} $</div></div>`:''}
+        <div class="tstat"><div class="l">دافع للموظفين هالأسبوع</div><div class="v" style="color:var(--gold);">${money(laborTotal)} ل.س</div></div>
+      </div>
+
+      <h2 class="section-title" style="margin-top:16px;">💵 الوضع المالي بالفترة (ل.س)</h2>
+      <div class="totals-row">
+        <div class="tstat"><div class="l">قديش بعت (مبيعات)</div><div class="v" style="color:var(--green);">${money(weekSalesTotal.SYP)}</div></div>
+        <div class="tstat"><div class="l">قديش صرفت (مواد+عمال+ثابتة+تحويل دولار)</div><div class="v" style="color:var(--red);">${money(weekSpentTotal)}</div></div>
+        <div class="tstat"><div class="l">شو ظل معي (الصافي)</div><div class="v" style="color:${weekCashRemaining>=0?'var(--green)':'var(--red)'};">${money(weekCashRemaining)}</div></div>
+        <div class="tstat"><div class="l">كم بقى عليّ (كل الديون الحالية)</div><div class="v" style="color:var(--gold);">${money(totalStillOwed)}</div></div>
+      </div>
+      <div class="tstat" style="display:inline-block;margin-top:6px;background:${weekCashRemaining>=0?'rgba(91,140,90,.15)':'rgba(181,83,60,.15)'};border-color:${weekCashRemaining>=0?'var(--green)':'var(--red)'};">
+        <div class="l">${weekCashRemaining>=0?'🟢 رابح هالفترة':'🔴 خسران هالفترة'} (كاش فعلي: بعت ناقص صرفت)</div>
+        <div class="v" style="color:${weekCashRemaining>=0?'var(--green)':'var(--red)'};font-size:18px;">${money(Math.abs(weekCashRemaining))} ل.س</div>
+      </div>
+      <p class="muted" style="margin-top:6px;">"كم بقى عليّ" بيشمل كل الفواتير والمصاريف الثابتة الغير مدفوعة لحد الآن + صافي مستحقات العمال — مش خاص بهالفترة بس، هو إجمالي الديون الحالية كلها.</p>
+
+      <h2 class="section-title" style="margin-top:16px;">📦 مشتريات هالفترة — شو سددت وشو ظل</h2>
+      ${weekPurchases.length===0?`<div class="empty">ما في مشتريات مسجلة هالفترة</div>`:`
+        <div class="totals-row">
+          <div class="tstat"><div class="l">إجمالي فواتير الفترة (ل.س)</div><div class="v">${money(weekPurchases.filter(p=>p.currency!=='USD').reduce((s,p)=>s+p.total,0))} ل.س</div></div>
+          <div class="tstat"><div class="l">سددت منها (ل.س)</div><div class="v" style="color:var(--green);">${money(weekPurchases.filter(p=>p.currency!=='USD').reduce((s,p)=>s+purchasePaidAmount(p),0))} ل.س</div></div>
+          <div class="tstat"><div class="l">ظل عليّ منها (ل.س)</div><div class="v" style="color:var(--red);">${money(weekPurchases.filter(p=>p.currency!=='USD').reduce((s,p)=>s+purchaseRemaining(p),0))} ل.س</div></div>
+        </div>
+        ${weekPurchases.some(p=>p.currency==='USD')?`
+        <div class="totals-row" style="margin-top:4px;">
+          <div class="tstat"><div class="l">إجمالي فواتير الفترة ($)</div><div class="v">${money(weekPurchases.filter(p=>p.currency==='USD').reduce((s,p)=>s+p.total,0))} $</div></div>
+          <div class="tstat"><div class="l">سددت منها ($)</div><div class="v" style="color:var(--green);">${money(weekPurchases.filter(p=>p.currency==='USD').reduce((s,p)=>s+purchasePaidAmount(p),0))} $</div></div>
+          <div class="tstat"><div class="l">ظل عليّ منها ($)</div><div class="v" style="color:var(--red);">${money(weekPurchases.filter(p=>p.currency==='USD').reduce((s,p)=>s+purchaseRemaining(p),0))} $</div></div>
+        </div>`:''}
+        <p class="muted" style="margin-top:8px;">هاد بس للفواتير يلي تاريخها ضمن الفترة المختارة فوق — بغض النظر متى سددتها فعلياً.</p>
+      `}
+
+      <h2 class="section-title" style="margin-top:16px;">دافع للمؤسسات (المشتريات حسب المورد)</h2>
+      ${Object.keys(bySupplier).length===0?`<div class="empty">ما في مشتريات هالأسبوع</div>`:`
+        <table class="sheet">
+          <tr><th>المؤسسة</th><th>المبلغ</th></tr>
+          ${Object.entries(bySupplier).map(([sup,v])=>`
+            <tr><td>${sup}</td><td class="num">${v.SYP?money(v.SYP)+' ل.س':''}${v.SYP&&v.USD?' + ':''}${v.USD?money(v.USD)+' $':''}</td></tr>
+          `).join("")}
+        </table>
+      `}
+
+      <h2 class="section-title" style="margin-top:16px;">الرصيد اليومي (مبيعات - مشتريات)</h2>
+      <table class="sheet">
+        <tr><th>اليوم</th><th>مبيعات</th><th>مصاريف (مشتريات+ثابتة)</th><th>الرصيد</th></tr>
+        ${days.map(d=>`
+          <tr>
+            <td>${d.label}<div class="muted" style="font-size:10.5px;">${d.iso}</div></td>
+            <td class="num" style="color:var(--green);">${money(d.daySales)}</td>
+            <td class="num" style="color:var(--red);">${money(d.dayPurchasesSYP)}</td>
+            <td class="num" style="color:${d.balance>=0?'var(--green)':'var(--red)'};">${money(d.balance)}</td>
+          </tr>
+        `).join("")}
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="flex-between" style="margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <h2 class="section-title" style="margin:0;">💰 نتيجة الأرباح الشهرية</h2>
+        <input type="month" value="${reportsMonth}" style="width:auto;" onchange="setReportsMonth(this.value)">
+      </div>
+      <div class="totals-row">
+        <div class="tstat"><div class="l">إجمالي المبيعات</div><div class="v" style="color:var(--green);">${money(monthSales)} ل.س</div></div>
+        <div class="tstat"><div class="l">إجمالي المشتريات (ل.س)</div><div class="v" style="color:var(--red);">${money(monthPurchases.SYP)} ل.س</div></div>
+        ${monthPurchases.USD?`<div class="tstat"><div class="l">إجمالي المشتريات ($)</div><div class="v" style="color:var(--red);">${money(monthPurchases.USD)} $</div></div>`:''}
+        <div class="tstat"><div class="l">تقدير رواتب الشهر (${thursdaysCount} أسابيع)</div><div class="v" style="color:var(--red);">${money(monthLaborEstimate)} ل.س</div></div>
+        <div class="tstat"><div class="l">تقدير المصاريف الثابتة (إيجار/ماء/غاز...)</div><div class="v" style="color:var(--red);">${money(monthFixedEstimate)} ل.س</div></div>
+      </div>
+      <div class="tstat" style="display:inline-block;margin-top:6px;">
+        <div class="l">صافي الربح التقديري (ل.س)</div>
+        <div class="v" style="color:${monthNetProfit>=0?'var(--green)':'var(--red)'};font-size:22px;">${money(monthNetProfit)} ل.س</div>
+      </div>
+      ${monthPurchases.USD?`<p class="muted" style="margin-top:8px;">ملاحظة: مشتريات الدولار (${money(monthPurchases.USD)} $) ما انحسبت بصافي الربح لأنها بعملة مختلفة عن المبيعات — احسبها لحالك حسب سعر الصرف يلي بينفعك.</p>`:''}
+      <p class="muted">ملاحظة: تقدير الرواتب مبني على الرواتب الأسبوعية الحالية × عدد أيام الخميس بالشهر، مش سجل تاريخي فعلي.</p>
+    </div>
+  `;
+}
+
+/* ================= الإعدادات ================= */
+function renderSettings(){
+  const sheetsUrl = settings.sheetsUrl || "";
+  const autoSync = !!settings.autoSync;
+  const lastSync = settings.lastSync ? new Date(settings.lastSync).toLocaleString("ar-SY") : "لسا ما تمت مزامنة";
+  const apiKey = settings.apiKey || "";
+  return `
+    <div class="panel">
+      <h2 class="section-title">حالة البيانات</h2>
+      <p class="muted" style="margin-top:0;">البرنامج صار مستقل بالكامل — كل بياناتك محفوظة على هالجهاز بالذات (بمتصفحك)، وما بتترسل لأي مكان إلا إذا فعّلت الربط بغوغل شيت تحت. إذا مسحت بيانات المتصفح أو استخدمت جهاز/متصفح تاني، لازم تستورد نسخة احتياطية.</p>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">مفتاح Gemini API المجاني (لميزة قراءة الفاتورة بالصورة)</h2>
+      <p class="muted" style="margin-top:0;">هاي الميزة بتستخدم Google Gemini، عندها باقة مجانية كافية لاستخدام مطعم عادي (مئات الفواتير باليوم). احصل على مفتاح مجاني من
+        <span style="color:var(--gold);">aistudio.google.com</span> ← Get API key ← Create API key بحساب غوغل عادي، بدون بطاقة ائتمان. والصقه هون.</p>
+      <div class="field">
+        <label>مفتاح Gemini API</label>
+        <input id="apiKeyInput" type="password" value="${apiKey}" placeholder="AIza..." oninput="onApiKeyChange(this.value)">
+      </div>
+      <p class="muted">المفتاح محفوظ بس على هالجهاز جوا المتصفح، ما بينبعت لأي حد غير Google مباشرة وقت قراءة الفاتورة.</p>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">ربط Google Sheets</h2>
+      <div class="field">
+        <label>رابط Google Apps Script (Web App URL)</label>
+        <input id="sheetsUrlInput" value="${sheetsUrl}" placeholder="https://script.google.com/macros/s/.../exec" oninput="onSheetsUrlChange(this.value)">
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;flex-direction:row;">
+        <input type="checkbox" id="autoSyncCheck" style="width:auto;" ${autoSync?'checked':''} onchange="onAutoSyncChange(this.checked)">
+        <label style="margin:0;">مزامنة تلقائية بعد كل إضافة أو تعديل</label>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn blue" onclick="syncToSheets(true)">⬆ إرسال بياناتي للشيت</button>
+        <button class="btn secondary" onclick="pullFromSheets(true)">⬇ سحب آخر نسخة من الشيت</button>
+      </div>
+      <p class="muted" style="margin-top:6px;">آخر مزامنة: ${lastSync}</p>
+      <div class="hint" style="margin-top:10px;">
+        <b>لمشاركة البيانات مع شخص تاني:</b> الاثنين حطوا نفس رابط Google Apps Script بالإعدادات عندكم. البرنامج بيسحب آخر نسخة من الشيت لما تفتحه، وبيرسل تلقائياً بعد كل إضافة/تعديل (إذا فعّلت "مزامنة تلقائية"). لتفادي التعارض، اضغط "سحب آخر نسخة" قبل ما تبلش تضيف، خصوصاً إذا الشخص التاني ضاف شي قريب.
+      </div>
+      <p class="muted" style="margin-top:10px;">ملاحظة: بسبب قيود غوغل ما فيني أتأكد ١٠٠٪ إنو وصلت البيانات من داخل المتصفح — تحقق من الشيت بعد أول مزامنة.</p>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">نسخة احتياطية محلية على جهازك</h2>
+      <p class="muted" style="margin-top:0;">تحمّل كل البيانات كملف JSON واحد على جهازك، أو تسترجعها منه — بدون أي اتصال إنترنت.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn secondary" onclick="exportBackup()">⬇ تصدير نسخة احتياطية</button>
+        <button class="btn secondary" onclick="document.getElementById('backupFileInput').click()">⬆ استيراد نسخة احتياطية</button>
+      </div>
+    </div>
+  `;
+}
+let sheetsUrlDebounce;
+let apiKeyDebounce;
+function onApiKeyChange(v){
+  settings.apiKey = v.trim();
+  clearTimeout(apiKeyDebounce);
+  apiKeyDebounce = setTimeout(()=>save("settings",settings),500);
+}
+function onSheetsUrlChange(v){
+  settings.sheetsUrl = v.trim();
+  clearTimeout(sheetsUrlDebounce);
+  sheetsUrlDebounce = setTimeout(()=>save("settings",settings),500);
+}
+function onAutoSyncChange(checked){
+  settings.autoSync = checked;
+  save("settings",settings);
+}
+async function syncToSheets(manual){
+  if(!settings.sheetsUrl){ if(manual) toast("حط رابط Google Apps Script أولاً"); return; }
+  try{
+    await fetch(settings.sheetsUrl, {
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({
+        purchases: purchases.map(p=>({...p, statusLabel: purchaseRemaining(p)<=0.001?'مدفوعة بالكامل':(purchasePaidAmount(p)>0.001?'مدفوعة جزئياً':'غير مدفوعة'), paidAmount: purchasePaidAmount(p), remaining: purchaseRemaining(p)})),
+        workers, sales, materials,
+        fixedExpenses: fixedExpenses.map(f=>({...f, statusLabel: fixedRemaining(f)<=0.001?'مدفوعة بالكامل':(fixedPaidAmount(f)>0.001?'مدفوعة جزئياً':'غير مدفوعة'), paidAmount: fixedPaidAmount(f), remaining: fixedRemaining(f)})),
+        supplierBalances, netAdjustments, usdBuys, netBaseline,
+        restaurantName: settings.restaurantName||''
+      })
+    });
+    settings.lastSync = Date.now();
+    await save("settings",settings);
+    if(manual) toast("تم إرسال البيانات لغوغل شيت");
+  }catch(e){
+    if(manual) toast("صار خطأ بالإرسال، تأكد من الرابط");
+  }
+}
+async function pullFromSheets(manual){
+  if(!settings.sheetsUrl){ if(manual) toast("حط رابط Google Apps Script أولاً"); return; }
+  try{
+    const res = await fetch(settings.sheetsUrl, {method:"GET"});
+    const data = await res.json();
+    if(!data || (!data.purchases && !data.workers && !data.sales)){
+      if(manual) toast("ما في بيانات محفوظة بالشيت لسا");
+      return;
+    }
+    purchases = (data.purchases||[]).map(p=>({...p, payments: Array.isArray(p.payments) ? p.payments : (p.status==='paid' ? [{id:uid(), date:p.date, amount:p.total}] : [])}));
+    workers = data.workers || [];
+    sales = data.sales || [];
+    materials = data.materials || [];
+    fixedExpenses = (data.fixedExpenses||[]).map(f=>({...f, payments: Array.isArray(f.payments) ? f.payments : (f.status==='paid' ? [{id:uid(), date:f.date, amount:f.amount}] : [])}));
+    supplierBalances = data.supplierBalances || {};
+    netAdjustments = data.netAdjustments || [];
+    usdBuys = data.usdBuys || [];
+    netBaseline = data.netBaseline || null;
+    await save("purchases",purchases);
+    await save("workers",workers);
+    await save("sales",sales);
+    await save("materials",materials);
+    await save("fixedExpenses",fixedExpenses);
+    await save("supplierBalances",supplierBalances);
+    await save("netAdjustments",netAdjustments);
+    await save("usdBuys",usdBuys);
+    await save("netBaseline",netBaseline);
+    if(manual){ toast("تم تحديث البيانات من الشيت"); render(); }
+  }catch(e){
+    if(manual) toast("تعذر السحب من الشيت، تأكد من الرابط والاتصال");
+  }
+}
+async function autoSyncIfNeeded(){
+  if(settings.autoSync && settings.sheetsUrl){ await syncToSheets(false); }
+}
+
+/* ---------------- local backup ---------------- */
+function exportBackup(){
+  const data = {purchases, workers, attendance, payments, sales, materials, fixedExpenses, supplierBalances, netAdjustments, usdBuys, netBaseline, settings, exportedAt: new Date().toISOString()};
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = (settings.restaurantName||"مطعمي").replace(/[^ء-ي a-zA-Z0-9]/g,"_") + "_نسخة_احتياطية.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast("جاري تحميل النسخة الاحتياطية...");
+}
+function handleImportFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!confirm("رح تستبدل كل البيانات الحالية بالبيانات من الملف. متأكد؟")){ return; }
+      purchases = data.purchases || [];
+      workers = data.workers || [];
+      attendance = data.attendance || [];
+      payments = data.payments || [];
+      sales = data.sales || [];
+      materials = data.materials || [];
+      fixedExpenses = data.fixedExpenses || [];
+      supplierBalances = data.supplierBalances || {};
+      netAdjustments = data.netAdjustments || [];
+      usdBuys = data.usdBuys || [];
+      netBaseline = data.netBaseline || null;
+      settings = data.settings || settings;
+      await save("purchases",purchases);
+      await save("workers",workers);
+      await save("attendance",attendance);
+      await save("payments",payments);
+      await save("sales",sales);
+      await save("materials",materials);
+      await save("fixedExpenses",fixedExpenses);
+      await save("supplierBalances",supplierBalances);
+      await save("netAdjustments",netAdjustments);
+      await save("usdBuys",usdBuys);
+      await save("netBaseline",netBaseline);
+      await save("settings",settings);
+      document.getElementById("restaurantName").value = settings.restaurantName || "مطعمي";
+      toast("تم استرجاع النسخة الاحتياطية");
+      render();
+    }catch(err){
+      toast("ملف غير صالح، تأكد إنه نسخة احتياطية صحيحة");
+    }
+    document.getElementById("backupFileInput").value = "";
+  };
+  reader.readAsText(file);
+}
+
+/* ================= Export Excel ================= */
+function exportExcel(){
+  const wb = XLSX.utils.book_new();
+  const wsPurchases = XLSX.utils.json_to_sheet(purchases.map(p=>({
+    "التاريخ":p.date, "المؤسسة":p.supplier||'', "التصنيف":p.category, "الوصف":p.desc, "الكمية":p.qty, "سعر الوحدة":p.unitPrice,
+    "العملة": p.currency==="USD"?"دولار":"ليرة سورية", "الإجمالي":p.total,
+    "المدفوع":purchasePaidAmount(p), "المتبقي":purchaseRemaining(p),
+    "الحالة": purchaseRemaining(p)<=0.001?'مدفوعة بالكامل':(purchasePaidAmount(p)>0.001?'مدفوعة جزئياً':'غير مدفوعة')
+  })));
+  XLSX.utils.book_append_sheet(wb, wsPurchases, "المشتريات");
+
+  const purchasePaymentRows = [];
+  purchases.forEach(p=>{
+    (p.payments||[]).forEach(pm=>{
+      purchasePaymentRows.push({"التاريخ":pm.date, "المؤسسة":p.supplier||'', "الفاتورة":p.desc, "المبلغ":pm.amount, "العملة": p.currency==="USD"?"دولار":"ليرة سورية"});
+    });
+  });
+  if(purchasePaymentRows.length){
+    const wsPurPayments = XLSX.utils.json_to_sheet(purchasePaymentRows);
+    XLSX.utils.book_append_sheet(wb, wsPurPayments, "دفعات المشتريات");
+  }
+
+  const wsMaterials = XLSX.utils.json_to_sheet(materials.map(m=>({
+    "اسم المادة":m.name, "السعر":m.price, "العملة": m.currency==="USD"?"دولار":"ليرة سورية", "التصنيف":m.category
+  })));
+  XLSX.utils.book_append_sheet(wb, wsMaterials, "قائمة المواد");
+
+  const wsWorkers = XLSX.utils.json_to_sheet(workers.map(w=>({
+    "الاسم":w.name,
+    "الراتب الأسبوعي":w.weeklySalary,
+    "السلف الحالية":workerBorrowedAmount(w),
+    "الصافي":workerNet(w)
+  })));
+  XLSX.utils.book_append_sheet(wb, wsWorkers, "العمال");
+
+  const workerAdvanceRows = [];
+  workers.forEach(w=>{
+    (w.advances||[]).forEach(a=>{
+      workerAdvanceRows.push({"العامل":w.name, "تاريخ السلفة":a.date, "المبلغ":a.amount});
+    });
+  });
+  if(workerAdvanceRows.length){
+    const wsWorkerAdvances = XLSX.utils.json_to_sheet(workerAdvanceRows);
+    XLSX.utils.book_append_sheet(wb, wsWorkerAdvances, "سلف العمال");
+  }
+
+  const workerPaymentRows = [];
+  workers.forEach(w=>{
+    (w.payments||[]).forEach(pm=>{
+      workerPaymentRows.push({"العامل":w.name, "من":pm.weekStart, "إلى":pm.weekEnd, "المبلغ":pm.amount, "تاريخ الدفع":pm.paidDate});
+    });
+  });
+  if(workerPaymentRows.length){
+    const wsWorkerPayments = XLSX.utils.json_to_sheet(workerPaymentRows);
+    XLSX.utils.book_append_sheet(wb, wsWorkerPayments, "دفعات الرواتب");
+  }
+
+  const wsSales = XLSX.utils.json_to_sheet(sales.map(s=>({
+    "التاريخ":s.date, "الوصف":s.desc, "الكمية":s.qty, "السعر":s.price, "الإجمالي":s.total
+  })));
+  XLSX.utils.book_append_sheet(wb, wsSales, "المبيعات");
+
+  const wsFixed = XLSX.utils.json_to_sheet(fixedExpenses.map(f=>({
+    "الاسم":f.name, "المبلغ":f.amount, "العملة": f.currency==="USD"?"دولار":"ليرة سورية",
+    "التكرار":f.frequency||'', "التاريخ":f.date,
+    "المدفوع":fixedPaidAmount(f), "المتبقي":fixedRemaining(f),
+    "الحالة": fixedRemaining(f)<=0.001?'مدفوعة بالكامل':(fixedPaidAmount(f)>0.001?'مدفوعة جزئياً':'غير مدفوعة')
+  })));
+  XLSX.utils.book_append_sheet(wb, wsFixed, "المصاريف الثابتة");
+
+  const fixedPaymentRows = [];
+  fixedExpenses.forEach(f=>{
+    (f.payments||[]).forEach(pm=>{
+      fixedPaymentRows.push({"الاسم":f.name, "التاريخ":pm.date, "المبلغ":pm.amount, "العملة": f.currency==="USD"?"دولار":"ليرة سورية"});
+    });
+  });
+  if(fixedPaymentRows.length){
+    const wsFixedPayments = XLSX.utils.json_to_sheet(fixedPaymentRows);
+    XLSX.utils.book_append_sheet(wb, wsFixedPayments, "دفعات المصاريف الثابتة");
+  }
+
+  const fname = (settings.restaurantName||"مطعمي").replace(/[^ء-ي a-zA-Z0-9]/g,"_") + "_سجل.xlsx";
+  XLSX.writeFile(wb, fname);
+  toast("جاري تحميل الملف...");
+}
+
+/* ================= render root ================= */
+function render(){
+  renderThursdayBanner();
+  const c=document.getElementById("content");
+  if(currentTab==="purchases") c.innerHTML = renderPurchases();
+  else if(currentTab==="fixed") c.innerHTML = renderFixedExpenses();
+  else if(currentTab==="workers") c.innerHTML = renderWorkers();
+  else if(currentTab==="sales") c.innerHTML = renderSales();
+  else if(currentTab==="reports") c.innerHTML = renderReports();
+  else if(currentTab==="settings") c.innerHTML = renderSettings();
+}
+
+async function init(){
+  renderTabs();
+  document.getElementById("content").innerHTML = `<div class="empty">جاري التحميل...</div>`;
+  await loadAll();
+  render();
+  if(settings.sheetsUrl){ await pullFromSheets(false); render(); }
+}
+init();
+</script>
+</body>
+</html>
